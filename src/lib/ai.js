@@ -5,55 +5,31 @@ export async function generateResearch({ ticker, financials, apiKey, provider, m
   const t = ticker.toUpperCase()
 
   const marketBlock = fin.price != null
-    ? `=== LIVE MARKET DATA ===
-Current Price:         $${fin.price.toFixed(2)}
-Market Cap:            ${dollar(fin.marketCap)}
-(Anchor your 12-month price target to this live price. Upside/downside must be measured from $${fin.price.toFixed(2)}.)
-
-`
+    ? `Current Price: $${fin.price.toFixed(2)} | Market Cap: ${dollar(fin.marketCap)} (anchor your 12-month price target to this live price)\n`
     : ''
 
-  const dataBlock = `
-COMPANY: ${fin.companyName} (${t})
+  const dataBlock = `${fin.companyName} (${t})
+${marketBlock}
+Revenue: ${dollar(fin.revenue)} | Prev: ${dollar(fin.prevRevenue)} | Growth: ${pct(fin.revenueGrowth)}
+Gross Profit: ${dollar(fin.grossProfit)} | Gross Margin: ${pct(fin.grossMargin)}
+EBIT: ${dollar(fin.ebit)} | EBITDA: ${dollar(fin.ebitda)} | EBITDA Margin: ${pct(fin.ebitdaMargin)}
+Op Margin: ${pct(fin.operatingMargin)} | Net Income: ${dollar(fin.netIncome)} | Net Margin: ${pct(fin.netMargin)}
+EPS: ${fin.eps != null ? '$' + fin.eps.toFixed(2) : 'N/A'} | D&A: ${dollar(fin.da)} | Interest: ${dollar(fin.interestExpense)}
+Cash: ${dollar(fin.cash)} | Total Assets: ${dollar(fin.totalAssets)} | Equity: ${dollar(fin.totalEquity)}
+LT Debt: ${dollar(fin.longTermDebt)} | Net Debt: ${dollar(fin.netDebt)} | Current Ratio: ${fin.currentRatio != null ? fin.currentRatio.toFixed(2) + 'x' : 'N/A'}
+D/E: ${fin.debtToEquity != null ? fin.debtToEquity.toFixed(2) + 'x' : 'N/A'} | Int Coverage: ${fin.interestCoverage != null ? fin.interestCoverage.toFixed(1) + 'x' : 'N/A'} | ROE: ${pct(fin.roe)} | ROA: ${pct(fin.roa)}
+Op CF: ${dollar(fin.operatingCF)} | CapEx: ${dollar(fin.capex)} | FCF: ${dollar(fin.fcf)} | FCF Margin: ${pct(fin.fcfMargin)}
+Dividends: ${dollar(fin.dividendsPaid)} | Buybacks: ${dollar(fin.shareRepurchases)} | Shares: ${fin.shares != null ? (fin.shares / 1e6).toFixed(1) + 'M' : 'N/A'}`
 
-${marketBlock}=== INCOME STATEMENT ===
-Revenue (TTM):         ${dollar(fin.revenue)}
-Revenue (Prior Year):  ${dollar(fin.prevRevenue)}
-Revenue Growth YoY:    ${pct(fin.revenueGrowth)}
-Gross Profit:          ${dollar(fin.grossProfit)}
-Gross Margin:          ${pct(fin.grossMargin)}
-EBIT:                  ${dollar(fin.ebit)}
-EBITDA:                ${dollar(fin.ebitda)}
-EBITDA Margin:         ${pct(fin.ebitdaMargin)}
-Operating Margin:      ${pct(fin.operatingMargin)}
-Net Income:            ${dollar(fin.netIncome)}
-Net Margin:            ${pct(fin.netMargin)}
-EPS:                   ${fin.eps != null ? '$' + fin.eps.toFixed(2) : 'N/A'}
-D&A:                   ${dollar(fin.da)}
-Interest Expense:      ${dollar(fin.interestExpense)}
+  // Groq free tier: 12k TPM — use single-pass to avoid hitting the limit twice
+  if (provider === 'groq') {
+    return generateSinglePass({ t, dataBlock, apiKey, provider, model, onProgress })
+  }
 
-=== BALANCE SHEET ===
-Cash:                  ${dollar(fin.cash)}
-Total Assets:          ${dollar(fin.totalAssets)}
-Stockholders Equity:   ${dollar(fin.totalEquity)}
-Long-Term Debt:        ${dollar(fin.longTermDebt)}
-Net Debt:              ${dollar(fin.netDebt)}
-Current Ratio:         ${fin.currentRatio != null ? fin.currentRatio.toFixed(2) + 'x' : 'N/A'}
-Debt/Equity:           ${fin.debtToEquity != null ? fin.debtToEquity.toFixed(2) + 'x' : 'N/A'}
-Interest Coverage:     ${fin.interestCoverage != null ? fin.interestCoverage.toFixed(1) + 'x' : 'N/A'}
-ROE:                   ${pct(fin.roe)}
-ROA:                   ${pct(fin.roa)}
+  return generateTwoPass({ t, dataBlock, apiKey, provider, model, onProgress, fin })
+}
 
-=== CASH FLOW ===
-Operating Cash Flow:   ${dollar(fin.operatingCF)}
-CapEx:                 ${dollar(fin.capex)}
-Free Cash Flow:        ${dollar(fin.fcf)}
-FCF Margin:            ${pct(fin.fcfMargin)}
-Dividends Paid:        ${dollar(fin.dividendsPaid)}
-Share Repurchases:     ${dollar(fin.shareRepurchases)}
-Shares Outstanding:    ${fin.shares != null ? (fin.shares / 1e6).toFixed(1) + 'M' : 'N/A'}
-`.trim()
-
+async function generateTwoPass({ t, dataBlock, apiKey, provider, model, onProgress, fin }) {
   const pass1Prompt = `Conduct a comprehensive equity research analysis on ${t}.
 
 ${dataBlock}
@@ -73,7 +49,6 @@ Structure your analysis across these sections. Be specific — reference actual 
    - Return on capital (ROE, ROA) trend
 
 3. VALUATION FRAMEWORK
-   - Estimate current price and market cap
    - DCF assumptions: near-term growth (3Y), long-term growth (5Y), terminal growth, WACC
    - Implied intrinsic value per share
    - Current trading multiples vs. sector peers
@@ -100,6 +75,25 @@ Extract ALL fields into valid JSON. Output ONLY the JSON object — no markdown,
   onProgress?.('Pass 2/2 — structuring output...')
   const raw = await callAI({ systemPrompt: SYSTEM, prompt: pass2Prompt, apiKey, provider, model, onProgress })
 
+  return parseStructured(raw, reasoning)
+}
+
+async function generateSinglePass({ t, dataBlock, apiKey, provider, model, onProgress }) {
+  onProgress?.('Analyzing — generating research...')
+
+  const prompt = `Analyze ${t} and output a JSON research report. Be specific with numbers. Output ONLY valid JSON — no markdown, no prose, no code fences.
+
+DATA:
+${dataBlock}
+
+JSON schema (fill every field with real analysis — no nulls where data exists):
+{"recommendation":"BUY"|"HOLD"|"SELL","targetPrice":number|null,"currentPrice":number|null,"upside":number|null,"companyDescription":"one sentence","executiveSummary":"3-4 sentences covering growth, margins, valuation stance","moatRating":"WIDE"|"NARROW"|"NONE","investmentThesis":"2-3 sentences — specific, data-driven, take a clear stance","bullCase":["point with specific number","point with specific number","point with specific number"],"bearCase":["point with specific number","point with specific number","point with specific number"],"catalysts":["specific near-term catalyst","specific near-term catalyst"],"dcfAssumptions":{"nearTermGrowth":number,"longTermGrowth":number,"terminalGrowthRate":number,"wacc":number,"ebitdaMargin":number,"fcfConversionRate":number},"comps":[{"ticker":"string","name":"string","evEbitda":number|null,"peRatio":number|null,"revenueGrowth":number|null,"grossMargin":number|null},{"ticker":"string","name":"string","evEbitda":number|null,"peRatio":number|null,"revenueGrowth":number|null,"grossMargin":number|null},{"ticker":"string","name":"string","evEbitda":number|null,"peRatio":number|null,"revenueGrowth":number|null,"grossMargin":number|null}],"risks":[{"title":"string","description":"string","severity":"HIGH"|"MEDIUM"|"LOW","category":"FINANCIAL"|"OPERATIONAL"|"REGULATORY"|"COMPETITIVE"|"MACRO"},{"title":"string","description":"string","severity":"HIGH"|"MEDIUM"|"LOW","category":"FINANCIAL"|"OPERATIONAL"|"REGULATORY"|"COMPETITIVE"|"MACRO"},{"title":"string","description":"string","severity":"HIGH"|"MEDIUM"|"LOW","category":"FINANCIAL"|"OPERATIONAL"|"REGULATORY"|"COMPETITIVE"|"MACRO"},{"title":"string","description":"string","severity":"HIGH"|"MEDIUM"|"LOW","category":"FINANCIAL"|"OPERATIONAL"|"REGULATORY"|"COMPETITIVE"|"MACRO"}],"tradingMultiples":{"evRevenue":number|null,"evEbitda":number|null,"peRatio":number|null,"fcfYield":number|null},"financialHighlights":{"revenueGrowthComment":"string","marginComment":"string","balanceSheetComment":"string","fcfComment":"string"},"analystNote":"2-3 sentences — definitive stance, cite specific numbers, no boilerplate"}`
+
+  const raw = await callAI({ systemPrompt: SYSTEM, prompt, apiKey, provider, model, onProgress })
+  return parseStructured(raw, null)
+}
+
+function parseStructured(raw, reasoning) {
   const jsonMatch = raw.match(/\{[\s\S]*\}/)
   if (!jsonMatch) throw new Error('AI returned unparseable output. Try again.')
   let structured
@@ -108,8 +102,7 @@ Extract ALL fields into valid JSON. Output ONLY the JSON object — no markdown,
   } catch {
     throw new Error('JSON parse failed. The model may have truncated its response.')
   }
-
-  return { reasoning, structured }
+  return { reasoning: reasoning ?? raw, structured }
 }
 
 async function callAI({ prompt, systemPrompt, apiKey, provider, model, onProgress }) {
@@ -122,12 +115,11 @@ async function callAI({ prompt, systemPrompt, apiKey, provider, model, onProgres
   if (res.status === 429 || res.status === 500) {
     const err = await res.json().catch(() => ({}))
     const msg = err.error || ''
-    // Parse wait seconds from Groq rate limit message: "Please try again in 38.32s"
     const waitMatch = msg.match(/try again in ([\d.]+)s/i)
     if (waitMatch) {
       const waitSec = Math.ceil(parseFloat(waitMatch[1])) + 2
       for (let i = waitSec; i > 0; i--) {
-        onProgress?.(`Rate limit — retrying in ${i}s...`)
+        onProgress?.(`Rate limited — retrying in ${i}s...`)
         await sleep(1000)
       }
       return callAI({ prompt, systemPrompt, apiKey, provider, model, onProgress })
