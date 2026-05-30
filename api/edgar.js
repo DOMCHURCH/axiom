@@ -11,8 +11,8 @@ export default async function handler(req, res) {
   try {
     const t = ticker.trim().toUpperCase()
 
-    // Resolve ticker → CIK via EDGAR company_tickers.json
-    const tickerMapRes = await fetch('https://www.sec.gov/files/company_tickers.json', {
+    // Use the company_tickers_exchange.json (smaller, ~200KB vs 1MB for company_tickers.json)
+    const tickerMapRes = await fetch('https://www.sec.gov/files/company_tickers_exchange.json', {
       headers: { 'User-Agent': UA },
     })
     if (!tickerMapRes.ok) throw new Error('Failed to reach SEC EDGAR')
@@ -20,13 +20,40 @@ export default async function handler(req, res) {
 
     let cik = null
     let companyName = t
-    for (const entry of Object.values(tickerMap)) {
-      if (entry.ticker.toUpperCase() === t) {
-        cik = String(entry.cik_str).padStart(10, '0')
-        companyName = entry.title || t
-        break
+    // company_tickers_exchange.json has { fields: [...], data: [[cik, name, ticker, exchange], ...] }
+    const fields = tickerMap.fields || []
+    const rows = tickerMap.data || []
+    const cikIdx = fields.indexOf('cik')
+    const nameIdx = fields.indexOf('name')
+    const tickerIdx = fields.indexOf('ticker')
+
+    if (cikIdx >= 0 && tickerIdx >= 0) {
+      for (const row of rows) {
+        if (String(row[tickerIdx]).toUpperCase() === t) {
+          cik = String(row[cikIdx]).padStart(10, '0')
+          companyName = nameIdx >= 0 ? row[nameIdx] : t
+          break
+        }
       }
     }
+
+    // Fallback to company_tickers.json if not found
+    if (!cik) {
+      const fallbackRes = await fetch('https://www.sec.gov/files/company_tickers.json', {
+        headers: { 'User-Agent': UA },
+      })
+      if (fallbackRes.ok) {
+        const fallback = await fallbackRes.json()
+        for (const entry of Object.values(fallback)) {
+          if (entry.ticker?.toUpperCase() === t) {
+            cik = String(entry.cik_str).padStart(10, '0')
+            companyName = entry.title || t
+            break
+          }
+        }
+      }
+    }
+
     if (!cik) return res.status(404).json({ error: `Ticker "${t}" not found in SEC EDGAR` })
 
     // Fetch XBRL company facts
