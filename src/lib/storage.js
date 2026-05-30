@@ -15,7 +15,7 @@ export function clearKey() {
 
 export function detectProvider(key) {
   if (!key) return null
-  if (key.startsWith('csk-')) return { provider: 'cerebras', model: 'llama-4-scout-17b-16e-instruct' }
+  if (key.startsWith('csk-')) return { provider: 'cerebras', model: 'llama-3.3-70b' }
   if (key.startsWith('gsk_')) return { provider: 'groq', model: 'llama-3.3-70b-versatile' }
   if (key.startsWith('sk-or-')) return { provider: 'openrouter', model: 'meta-llama/llama-3.3-70b-instruct' }
   if (key.startsWith('sk-ant-')) return { provider: 'anthropic', model: 'claude-3-5-haiku-20241022' }
@@ -25,14 +25,18 @@ export function detectProvider(key) {
 
 export function saveToHistory(ticker, reportWithFinancials) {
   const history = loadHistory()
-  const entry = { ticker, report: reportWithFinancials, timestamp: Date.now() }
-  const updated = [entry, ...history.filter(h => h.ticker !== ticker)].slice(0, 15)
+  // Omit reasoning (large pass-1 text) to keep localStorage small
+  const { reasoning: _, ...slim } = reportWithFinancials
+  const entry = { ticker, report: slim, timestamp: Date.now() }
+  const updated = [entry, ...history.filter(h => h.ticker !== ticker)].slice(0, 10)
   try {
     localStorage.setItem(HISTORY_STORE, JSON.stringify(updated))
   } catch {
-    // localStorage full — drop oldest and retry
-    const trimmed = updated.slice(0, 5)
-    localStorage.setItem(HISTORY_STORE, JSON.stringify(trimmed))
+    try {
+      localStorage.setItem(HISTORY_STORE, JSON.stringify(updated.slice(0, 3)))
+    } catch {
+      localStorage.removeItem(HISTORY_STORE)
+    }
   }
 }
 
