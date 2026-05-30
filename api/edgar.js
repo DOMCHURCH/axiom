@@ -71,7 +71,9 @@ export default async function handler(req, res) {
     const prevRevenue = revenues[1] ?? null
     const revenue2yAgo = revenues[2] ?? null
 
-    const grossProfit = latest(['GrossProfit'])
+    const costOfRevenue = latest(['CostOfRevenue', 'CostOfGoodsAndServicesSold', 'CostOfGoodsSold'])
+    const grossProfitDirect = latest(['GrossProfit'])
+    const grossProfit = grossProfitDirect ?? (revenue != null && costOfRevenue != null ? revenue - costOfRevenue : null)
     const operatingIncome = latest(['OperatingIncomeLoss'])
     const netIncome = latest(['NetIncomeLoss'])
     const ebit = operatingIncome

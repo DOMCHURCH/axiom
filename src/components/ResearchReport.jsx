@@ -128,6 +128,22 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
 
   const recColor = REC_COLOR[d.recommendation] || C.accent
 
+  // Compute valuation multiples from raw data when AI leaves them null
+  const currentPrice = d.currentPrice || null
+  const marketCap = currentPrice && fin.shares ? currentPrice * fin.shares : null
+  const ev = marketCap != null && fin.netDebt != null ? marketCap + fin.netDebt : null
+  const computedEvEbitda = ev && fin.ebitda ? ev / fin.ebitda : null
+  const computedPe = currentPrice && fin.eps ? currentPrice / fin.eps : (marketCap && fin.netIncome ? marketCap / fin.netIncome : null)
+  const computedFcfYield = marketCap && fin.fcf ? fin.fcf / marketCap : null
+  const computedEvRevenue = ev && fin.revenue ? ev / fin.revenue : null
+
+  const multiples = {
+    evRevenue: d.tradingMultiples?.evRevenue ?? computedEvRevenue,
+    evEbitda: d.tradingMultiples?.evEbitda ?? computedEvEbitda,
+    peRatio: d.tradingMultiples?.peRatio ?? computedPe,
+    fcfYield: d.tradingMultiples?.fcfYield ?? computedFcfYield,
+  }
+
   const s = {
     root: { maxWidth: 980, margin: '0 auto', padding: '40px 24px 80px', fontFamily: C.sans, color: '#e5e5e5' },
     grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
@@ -300,21 +316,19 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
       )}
 
       {/* ── VALUATION / TRADING MULTIPLES ── */}
-      {d.tradingMultiples && (
-        <Panel style={{ marginBottom: 16 }}>
-          <SectionHeader>Valuation Multiples</SectionHeader>
-          <div style={s.grid4}>
-            {[
-              ['EV/Revenue', fmtMultiple(d.tradingMultiples.evRevenue)],
-              ['EV/EBITDA', fmtMultiple(d.tradingMultiples.evEbitda)],
-              ['P/E', fmtMultiple(d.tradingMultiples.peRatio)],
-              ['FCF Yield', d.tradingMultiples.fcfYield != null ? pct(d.tradingMultiples.fcfYield) : 'N/A'],
-            ].map(([label, value]) => (
-              <Metric key={label} label={label} value={value} />
-            ))}
-          </div>
-        </Panel>
-      )}
+      <Panel style={{ marginBottom: 16 }}>
+        <SectionHeader>Valuation Multiples</SectionHeader>
+        <div style={s.grid4}>
+          {[
+            ['EV/Revenue', fmtMultiple(multiples.evRevenue)],
+            ['EV/EBITDA', fmtMultiple(multiples.evEbitda)],
+            ['P/E', fmtMultiple(multiples.peRatio)],
+            ['FCF Yield', multiples.fcfYield != null ? pct(multiples.fcfYield) : 'N/A'],
+          ].map(([label, value]) => (
+            <Metric key={label} label={label} value={value} />
+          ))}
+        </div>
+      </Panel>
 
       {/* ── DCF MODEL ── */}
       {dcf && (
