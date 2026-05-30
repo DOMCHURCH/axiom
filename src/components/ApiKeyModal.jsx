@@ -87,6 +87,12 @@ export default function ApiKeyModal({ onSave }) {
             </div>
           )}
 
+          {key.trim() && !detected && (
+            <div style={{ color: '#f87171', fontFamily: C.mono, fontSize: 12, marginBottom: 16, background: '#f8717110', border: '1px solid #f8717130', borderRadius: 6, padding: '10px 14px' }}>
+              Invalid key — unrecognized format. See supported providers below.
+            </div>
+          )}
+
           {error && (
             <div style={{ color: '#f87171', fontSize: 13, marginBottom: 16, lineHeight: 1.5 }}>{error}</div>
           )}
