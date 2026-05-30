@@ -101,12 +101,15 @@ function Divider() {
 export default function ResearchReport({ ticker, financials: fin, result }) {
   const d = result.structured
 
+  // Sanity-clamp absurd EDGAR values (e.g. period-length mismatches)
+  const revenueGrowth = fin.revenueGrowth != null && Math.abs(fin.revenueGrowth) < 5 ? fin.revenueGrowth : null
+
   // DCF inputs — prefer AI assumptions over raw data
   const fcf = fin.fcf || (fin.operatingCF ? fin.operatingCF * 0.85 : null)
   const dcfIn = {
     fcf,
-    nearTermGrowth: d.dcfAssumptions?.nearTermGrowth ?? d.dcfAssumptions?.revenueGrowth ?? 0.08,
-    longTermGrowth: d.dcfAssumptions?.longTermGrowth ?? (d.dcfAssumptions?.revenueGrowth ?? 0.08) * 0.6,
+    nearTermGrowth: d.dcfAssumptions?.nearTermGrowth ?? 0.08,
+    longTermGrowth: d.dcfAssumptions?.longTermGrowth ?? 0.05,
     terminalGrowth: d.dcfAssumptions?.terminalGrowthRate ?? 0.025,
     wacc: d.dcfAssumptions?.wacc ?? 0.09,
     shares: fin.shares,
@@ -115,8 +118,13 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
   const dcf = fcf ? runDCF(dcfIn) : null
   const sensitivity = fcf && dcf ? dcfSensitivity(dcfIn) : null
 
-  const upside = d.upside ?? (d.targetPrice && d.currentPrice
-    ? (d.targetPrice - d.currentPrice) / d.currentPrice : null)
+  // Upside: always compute from targetPrice/currentPrice if AI upside looks wrong
+  let upside = null
+  if (d.targetPrice && d.currentPrice && d.currentPrice > 0) {
+    upside = (d.targetPrice - d.currentPrice) / d.currentPrice
+  } else if (d.upside != null && Math.abs(d.upside) < 5) {
+    upside = d.upside
+  }
 
   const recColor = REC_COLOR[d.recommendation] || C.accent
 
@@ -197,8 +205,8 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
         <Metric
           label="Revenue (TTM)"
           value={fmtDollar(fin.revenue)}
-          sub={fin.revenueGrowth != null ? pctSigned(fin.revenueGrowth) + ' YoY' : undefined}
-          color={fin.revenueGrowth >= 0 ? C.positive : C.negative}
+          sub={revenueGrowth != null ? pctSigned(revenueGrowth) + ' YoY' : undefined}
+          color={revenueGrowth >= 0 ? C.positive : C.negative}
         />
         <Metric label="Gross Margin" value={pct(fin.grossMargin)} color={fin.grossMargin > 0.5 ? C.positive : fin.grossMargin > 0.3 ? C.warning : C.negative} />
         <Metric label="EBITDA Margin" value={pct(fin.ebitdaMargin)} color={fin.ebitdaMargin > 0.2 ? C.positive : fin.ebitdaMargin > 0.1 ? C.warning : C.negative} />
