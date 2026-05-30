@@ -1,78 +1,132 @@
 import { useState } from 'react'
 import { detectProvider } from '../lib/storage.js'
 
+const PROVIDERS = [
+  { prefix: 'sk-ant-', name: 'Anthropic', model: 'claude-3-5-haiku-20241022', color: '#d97706' },
+  { prefix: 'sk-or-', name: 'OpenRouter', model: 'meta-llama/llama-3.3-70b-instruct', color: '#8b5cf6' },
+  { prefix: 'gsk_', name: 'Groq', model: 'llama-3.3-70b-versatile', color: '#f59e0b' },
+  { prefix: 'csk-', name: 'Cerebras', model: 'llama-4-scout-17b-16e-instruct', color: '#22c55e' },
+  { prefix: 'sk-', name: 'OpenAI', model: 'gpt-4o-mini', color: '#38bdf8' },
+]
+
+const C = {
+  bg: '#0a0a0a', panel: '#111', border: '#1e1e1e',
+  accent: '#38bdf8', muted: '#4b5563',
+  mono: "'IBM Plex Mono', monospace", sans: "'Inter', sans-serif",
+}
+
 export default function ApiKeyModal({ onSave }) {
   const [key, setKey] = useState('')
   const [error, setError] = useState('')
 
   const detected = detectProvider(key)
+  const provInfo = detected ? PROVIDERS.find(p => p.name.toLowerCase() === detected.provider) : null
 
   function handleSubmit(e) {
     e.preventDefault()
+    if (!key.trim()) return
     if (!detected) {
-      setError('Unrecognized API key format. Supported: Cerebras (csk-), Groq (gsk_), OpenRouter (sk-or-), Anthropic (sk-ant-), OpenAI (sk-)')
+      setError('Unrecognized key format. See supported providers below.')
       return
     }
-    onSave(key, detected)
-  }
-
-  const s = {
-    overlay: {
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
-    },
-    modal: {
-      background: '#111', border: '1px solid #222', borderRadius: 12,
-      padding: 40, width: '100%', maxWidth: 480,
-    },
-    logo: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 22, fontWeight: 600, color: '#38bdf8', marginBottom: 8 },
-    sub: { fontSize: 14, color: '#666', marginBottom: 32, lineHeight: 1.6 },
-    label: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, display: 'block' },
-    input: {
-      width: '100%', background: '#0a0a0a', border: '1px solid #333', borderRadius: 6,
-      padding: '12px 14px', color: '#e5e5e5', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13,
-      outline: 'none', marginBottom: 12,
-    },
-    badge: {
-      display: 'inline-block', background: '#38bdf822', color: '#38bdf8',
-      fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, padding: '4px 10px',
-      borderRadius: 4, marginBottom: 20,
-    },
-    error: { color: '#f87171', fontSize: 13, marginBottom: 16, lineHeight: 1.5 },
-    btn: {
-      width: '100%', background: '#38bdf8', color: '#000', border: 'none',
-      borderRadius: 6, padding: '12px 0', fontFamily: "'IBM Plex Mono', monospace",
-      fontSize: 13, fontWeight: 600, cursor: 'pointer', letterSpacing: 0.5,
-    },
-    note: { fontSize: 12, color: '#444', marginTop: 16, lineHeight: 1.6 },
+    onSave(key.trim(), detected)
   }
 
   return (
-    <div style={s.overlay}>
-      <div style={s.modal}>
-        <div style={s.logo}>AXIOM</div>
-        <div style={s.sub}>Institutional-grade equity research. Bring your own API key — your key never leaves your browser.</div>
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 100, fontFamily: C.sans, padding: 16,
+    }}>
+      <div style={{
+        background: C.panel, border: `1px solid ${C.border}`,
+        borderRadius: 12, padding: '40px 44px', width: '100%', maxWidth: 480,
+      }}>
+        {/* Logo */}
+        <div style={{ fontFamily: C.mono, fontSize: 22, fontWeight: 700, color: '#38bdf8', letterSpacing: 3, marginBottom: 4 }}>
+          AXIOM
+        </div>
+        <div style={{ fontSize: 13, color: C.muted, marginBottom: 32, lineHeight: 1.6 }}>
+          Institutional equity research. Zero inference cost — your key stays in your browser.
+        </div>
+
         <form onSubmit={handleSubmit}>
-          <label style={s.label}>API Key</label>
+          <label style={{ fontFamily: C.mono, fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: 1.5, display: 'block', marginBottom: 8 }}>
+            API Key
+          </label>
           <input
-            style={s.input}
             type="password"
-            placeholder="sk-ant-... / sk-... / gsk_... / sk-or-... / csk-..."
+            placeholder="Paste your API key..."
             value={key}
             onChange={e => { setKey(e.target.value); setError('') }}
             autoFocus
+            style={{
+              width: '100%', background: C.bg, border: `1px solid ${detected ? '#38bdf855' : C.border}`,
+              borderRadius: 7, padding: '13px 16px', color: '#e5e5e5',
+              fontFamily: C.mono, fontSize: 13, outline: 'none', marginBottom: 12,
+              transition: 'border-color 0.15s',
+            }}
           />
+
+          {/* Detected provider badge */}
           {detected && (
-            <div style={s.badge}>
-              {detected.provider.toUpperCase()} → {detected.model}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20,
+              background: (provInfo?.color || '#38bdf8') + '12',
+              border: `1px solid ${provInfo?.color || '#38bdf8'}30`,
+              borderRadius: 6, padding: '10px 14px',
+            }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: provInfo?.color || '#38bdf8', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontFamily: C.mono, fontSize: 12, color: provInfo?.color || '#38bdf8', fontWeight: 600 }}>
+                  {detected.provider.toUpperCase()} detected
+                </div>
+                <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted, marginTop: 2 }}>
+                  Model: {detected.model}
+                </div>
+              </div>
             </div>
           )}
-          {error && <div style={s.error}>{error}</div>}
-          <button style={s.btn} type="submit">Launch AXIOM</button>
+
+          {error && (
+            <div style={{ color: '#f87171', fontSize: 13, marginBottom: 16, lineHeight: 1.5 }}>{error}</div>
+          )}
+
+          <button
+            type="submit"
+            disabled={!key.trim() || !detected}
+            style={{
+              width: '100%', background: detected ? '#38bdf8' : '#1a1a1a',
+              color: detected ? '#000' : C.muted, border: 'none', borderRadius: 7,
+              padding: '13px 0', fontFamily: C.mono, fontSize: 13, fontWeight: 700,
+              cursor: detected ? 'pointer' : 'not-allowed', letterSpacing: 0.5,
+              transition: 'background 0.15s',
+            }}
+          >
+            {detected ? `Launch with ${detected.provider.charAt(0).toUpperCase() + detected.provider.slice(1)} →` : 'Paste your API key above'}
+          </button>
         </form>
-        <div style={s.note}>
-          Supported providers: Anthropic, OpenAI, Groq, Cerebras, OpenRouter.<br />
-          Keys are stored in localStorage only. Zero server-side storage.
+
+        {/* Provider list */}
+        <div style={{ marginTop: 28, borderTop: `1px solid ${C.border}`, paddingTop: 20 }}>
+          <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 }}>
+            Supported Providers
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {PROVIDERS.map(p => (
+              <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: p.color }} />
+                  <span style={{ fontFamily: C.mono, fontSize: 12, color: '#9ca3af' }}>{p.name}</span>
+                </div>
+                <span style={{ fontFamily: C.mono, fontSize: 10, color: C.muted }}>{p.prefix}...</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 20, fontSize: 11, color: '#374151', lineHeight: 1.6 }}>
+          Keys are stored only in your browser's localStorage. Nothing is sent to our servers.
         </div>
       </div>
     </div>

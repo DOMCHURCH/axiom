@@ -14,6 +14,7 @@ export function clearKey() {
 }
 
 export function detectProvider(key) {
+  if (!key) return null
   if (key.startsWith('csk-')) return { provider: 'cerebras', model: 'llama-4-scout-17b-16e-instruct' }
   if (key.startsWith('gsk_')) return { provider: 'groq', model: 'llama-3.3-70b-versatile' }
   if (key.startsWith('sk-or-')) return { provider: 'openrouter', model: 'meta-llama/llama-3.3-70b-instruct' }
@@ -22,11 +23,17 @@ export function detectProvider(key) {
   return null
 }
 
-export function saveToHistory(ticker, report) {
+export function saveToHistory(ticker, reportWithFinancials) {
   const history = loadHistory()
-  const entry = { ticker, report, timestamp: Date.now() }
-  const updated = [entry, ...history.filter(h => h.ticker !== ticker)].slice(0, 20)
-  localStorage.setItem(HISTORY_STORE, JSON.stringify(updated))
+  const entry = { ticker, report: reportWithFinancials, timestamp: Date.now() }
+  const updated = [entry, ...history.filter(h => h.ticker !== ticker)].slice(0, 15)
+  try {
+    localStorage.setItem(HISTORY_STORE, JSON.stringify(updated))
+  } catch {
+    // localStorage full — drop oldest and retry
+    const trimmed = updated.slice(0, 5)
+    localStorage.setItem(HISTORY_STORE, JSON.stringify(trimmed))
+  }
 }
 
 export function loadHistory() {
