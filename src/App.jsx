@@ -137,9 +137,17 @@ export default function App() {
 
   if (report) {
     return (
-      <div style={s.app}>
-        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-        <nav style={s.nav}>
+      <div style={s.app} className="axiom-report-root">
+        <style>{`
+          @keyframes spin { to { transform: rotate(360deg) } }
+          @media print {
+            .axiom-no-print { display: none !important; }
+            .axiom-report-root { background: #fff !important; }
+            body { background: #fff !important; }
+            @page { margin: 14mm; }
+          }
+        `}</style>
+        <nav style={s.nav} className="axiom-no-print">
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={s.logo}>AXIOM</div>
             <div style={{ width: 1, height: 20, background: C.border }} />
@@ -165,6 +173,12 @@ export default function App() {
                 {report.structured.recommendation}
               </div>
             )}
+            <button
+              style={{ ...s.chip(true), display: 'flex', alignItems: 'center', gap: 6 }}
+              onClick={() => window.print()}
+            >
+              ⤓ Export PDF
+            </button>
             {provider && <div style={s.chip(false)}>{provider.provider.toUpperCase()}</div>}
             <button style={s.chip(false)} onClick={() => setShowKeyModal(true)}>API Key</button>
           </div>

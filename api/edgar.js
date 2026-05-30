@@ -65,6 +65,12 @@ export default async function handler(req, res) {
       return annualValues(concepts, unit, n).map(d => d.val)
     }
 
+    // Returns [currentYearVal, priorYearVal] for YoY score calculations
+    function latestTwo(concepts, unit = 'USD') {
+      const vals = annualValues(concepts, unit, 2).map(d => d.val)
+      return [vals[0] ?? null, vals[1] ?? null]
+    }
+
     // Income statement
     const revenues = latestN(['Revenues', 'RevenueFromContractWithCustomerExcludingAssessedTax', 'SalesRevenueNet', 'RevenueFromContractWithCustomerIncludingAssessedTax'], 'USD', 4)
     const revenue = revenues[0] ?? null
@@ -94,6 +100,8 @@ export default async function handler(req, res) {
     const inventory = latest(['InventoryNet'])
     const currentAssets = latest(['AssetsCurrent'])
     const currentLiabilities = latest(['LiabilitiesCurrent'])
+    const retainedEarnings = latest(['RetainedEarningsAccumulatedDeficit'])
+    const workingCapital = currentAssets != null && currentLiabilities != null ? currentAssets - currentLiabilities : null
 
     // Cash flow
     const operatingCF = latest(['NetCashProvidedByUsedInOperatingActivities'])
@@ -106,6 +114,49 @@ export default async function handler(req, res) {
     const sharesDiluted = latest(['CommonStockSharesOutstanding', 'WeightedAverageNumberOfDilutedSharesOutstanding'], 'shares')
     const sharesBasic = latest(['WeightedAverageNumberOfSharesOutstandingBasic'], 'shares')
     const shares = sharesDiluted ?? sharesBasic
+
+    // ── Prior-year values for Piotroski F-Score (YoY comparisons) ──
+    const [, pNetIncome] = latestTwo(['NetIncomeLoss'])
+    const [, pTotalAssets] = latestTwo(['Assets'])
+    const [, pOperatingCF] = latestTwo(['NetCashProvidedByUsedInOperatingActivities'])
+    const [, pLongTermDebt] = latestTwo(['LongTermDebt', 'LongTermDebtNoncurrent'])
+    const [, pCurrentAssets] = latestTwo(['AssetsCurrent'])
+    const [, pCurrentLiabilities] = latestTwo(['LiabilitiesCurrent'])
+    const [, pRevenue] = latestTwo(['Revenues', 'RevenueFromContractWithCustomerExcludingAssessedTax', 'SalesRevenueNet', 'RevenueFromContractWithCustomerIncludingAssessedTax'])
+    const [, pGrossProfitDirect] = latestTwo(['GrossProfit'])
+    const [, pCostOfRevenue] = latestTwo(['CostOfRevenue', 'CostOfGoodsAndServicesSold', 'CostOfGoodsSold'])
+    const pGrossProfit = pGrossProfitDirect ?? (pRevenue != null && pCostOfRevenue != null ? pRevenue - pCostOfRevenue : null)
+    const sharesPrior = latestTwo(['CommonStockSharesOutstanding', 'WeightedAverageNumberOfDilutedSharesOutstanding'], 'shares')[1]
+      ?? latestTwo(['WeightedAverageNumberOfSharesOutstandingBasic'], 'shares')[1]
+
+    const prior = {
+      netIncome: pNetIncome,
+      totalAssets: pTotalAssets,
+      operatingCF: pOperatingCF,
+      longTermDebt: pLongTermDebt,
+      currentAssets: pCurrentAssets,
+      currentLiabilities: pCurrentLiabilities,
+      currentRatio: pCurrentAssets && pCurrentLiabilities ? pCurrentAssets / pCurrentLiabilities : null,
+      revenue: pRevenue,
+      grossMargin: pRevenue && pGrossProfit != null ? pGrossProfit / pRevenue : null,
+      assetTurnover: pRevenue && pTotalAssets ? pRevenue / pTotalAssets : null,
+      shares: sharesPrior,
+    }
+
+    // ── Live stock price (Yahoo Finance, free, no key) ──
+    let price = null
+    let marketCap = null
+    try {
+      const yf = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=1d`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      })
+      if (yf.ok) {
+        const yfData = await yf.json()
+        const meta = yfData?.chart?.result?.[0]?.meta
+        price = meta?.regularMarketPrice ?? null
+        if (price != null && shares != null) marketCap = price * shares
+      }
+    } catch { /* price is best-effort; non-fatal */ }
 
     // Derived metrics
     const revenueGrowth = revenue != null && prevRevenue != null && prevRevenue !== 0
@@ -166,6 +217,8 @@ export default async function handler(req, res) {
         interestCoverage,
         roe,
         roa,
+        retainedEarnings,
+        workingCapital,
         // Cash flow
         operatingCF,
         capex,
@@ -175,6 +228,11 @@ export default async function handler(req, res) {
         shareRepurchases,
         // Shares
         shares,
+        // Market data
+        price,
+        marketCap,
+        // Prior-year snapshot for scoring
+        prior,
       },
     })
   } catch (err) {

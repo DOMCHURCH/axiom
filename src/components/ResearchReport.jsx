@@ -1,4 +1,6 @@
-import { fmt, fmtDollar, pct, pctSigned, fmtMultiple, runDCF, dcfSensitivity } from '../lib/dcf.js'
+import { fmt, fmtDollar, pct, pctSigned, fmtMultiple, runDCF, dcfSensitivity, monteCarloDCF } from '../lib/dcf.js'
+import { altmanZScore, piotroskiFScore, dupontROE } from '../lib/scores.js'
+import { Sparkline, FootballField, ScoreGauge, Histogram } from './charts.jsx'
 
 const C = {
   bg: '#0a0a0a',
@@ -67,10 +69,13 @@ function Badge({ label, color, size = 'sm' }) {
   )
 }
 
-function Metric({ label, value, sub, color, large }) {
+function Metric({ label, value, sub, color, large, chart }) {
   return (
     <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, padding: '14px 18px' }}>
-      <Label>{label}</Label>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <Label>{label}</Label>
+        {chart}
+      </div>
       <div style={{ fontFamily: C.mono, fontSize: large ? 22 : 18, fontWeight: 600, color: color || '#e5e5e5', lineHeight: 1 }}>
         {value}
       </div>
@@ -118,19 +123,25 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
   const dcf = fcf ? runDCF(dcfIn) : null
   const sensitivity = fcf && dcf ? dcfSensitivity(dcfIn) : null
 
-  // Upside: always compute from targetPrice/currentPrice if AI upside looks wrong
+  // ── Live price is the source of truth; AI estimate is fallback only ──
+  const isLive = fin.price != null
+  const currentPrice = fin.price ?? d.currentPrice ?? null
+
+  // Monte Carlo DCF distribution
+  const monteCarlo = fcf && fin.shares ? monteCarloDCF(dcfIn, currentPrice) : null
+
+  // Upside computed against the live price
   let upside = null
-  if (d.targetPrice && d.currentPrice && d.currentPrice > 0) {
-    upside = (d.targetPrice - d.currentPrice) / d.currentPrice
+  if (d.targetPrice && currentPrice && currentPrice > 0) {
+    upside = (d.targetPrice - currentPrice) / currentPrice
   } else if (d.upside != null && Math.abs(d.upside) < 5) {
     upside = d.upside
   }
 
   const recColor = REC_COLOR[d.recommendation] || C.accent
 
-  // Compute valuation multiples from raw data when AI leaves them null
-  const currentPrice = d.currentPrice || null
-  const marketCap = currentPrice && fin.shares ? currentPrice * fin.shares : null
+  // Valuation multiples — recomputed from the live market cap
+  const marketCap = (currentPrice && fin.shares ? currentPrice * fin.shares : null) ?? fin.marketCap ?? null
   const ev = marketCap != null && fin.netDebt != null ? marketCap + fin.netDebt : null
   const computedEvEbitda = ev && fin.ebitda ? ev / fin.ebitda : null
   const computedPe = currentPrice && fin.eps ? currentPrice / fin.eps : (marketCap && fin.netIncome ? marketCap / fin.netIncome : null)
@@ -138,11 +149,48 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
   const computedEvRevenue = ev && fin.revenue ? ev / fin.revenue : null
 
   const multiples = {
-    evRevenue: d.tradingMultiples?.evRevenue ?? computedEvRevenue,
-    evEbitda: d.tradingMultiples?.evEbitda ?? computedEvEbitda,
-    peRatio: d.tradingMultiples?.peRatio ?? computedPe,
-    fcfYield: d.tradingMultiples?.fcfYield ?? computedFcfYield,
+    evRevenue: computedEvRevenue ?? d.tradingMultiples?.evRevenue,
+    evEbitda: computedEvEbitda ?? d.tradingMultiples?.evEbitda,
+    peRatio: computedPe ?? d.tradingMultiples?.peRatio,
+    fcfYield: computedFcfYield ?? d.tradingMultiples?.fcfYield,
   }
+
+  // ── Financial-health scores ──
+  const altman = altmanZScore({ ...fin, marketCap })
+  const piotroski = piotroskiFScore(fin)
+  const dupont = dupontROE(fin)
+
+  // ── Football field: per-share valuation ranges across methods ──
+  const compEvEbitda = (d.comps || []).map(c => c.evEbitda).filter(v => v != null && isFinite(v) && v > 0)
+  const compPe = (d.comps || []).map(c => c.peRatio).filter(v => v != null && isFinite(v) && v > 0)
+
+  const perShareFromEvEbitda = (mult) => {
+    if (!fin.ebitda || !fin.shares) return null
+    const impliedEV = mult * fin.ebitda
+    const impliedEquity = impliedEV - (fin.netDebt || 0)
+    return impliedEquity / fin.shares
+  }
+  const perShareFromPe = (mult) => (fin.eps ? mult * fin.eps : null)
+
+  const ffMethods = []
+  if (monteCarlo) {
+    ffMethods.push({ label: 'DCF (Monte Carlo)', low: monteCarlo.p10, high: monteCarlo.p90, mid: monteCarlo.median, color: C.accent })
+  } else if (dcf?.intrinsicValue) {
+    ffMethods.push({ label: 'DCF', low: dcf.intrinsicValue * 0.85, high: dcf.intrinsicValue * 1.15, mid: dcf.intrinsicValue, color: C.accent })
+  }
+  if (compEvEbitda.length >= 1 && fin.ebitda) {
+    const lo = perShareFromEvEbitda(Math.min(...compEvEbitda))
+    const hi = perShareFromEvEbitda(Math.max(...compEvEbitda))
+    if (lo != null && hi != null && hi > 0) ffMethods.push({ label: 'EV/EBITDA Comps', low: Math.min(lo, hi), high: Math.max(lo, hi), color: '#a78bfa' })
+  }
+  if (compPe.length >= 1 && fin.eps) {
+    const lo = perShareFromPe(Math.min(...compPe))
+    const hi = perShareFromPe(Math.max(...compPe))
+    if (lo != null && hi != null && hi > 0) ffMethods.push({ label: 'P/E Comps', low: Math.min(lo, hi), high: Math.max(lo, hi), color: '#34d399' })
+  }
+
+  // Reverse EDGAR history (stored newest→oldest) to oldest→newest for sparklines
+  const revSeries = (fin.revenueHistory || []).slice().reverse()
 
   const s = {
     root: { maxWidth: 980, margin: '0 auto', padding: '40px 24px 80px', fontFamily: C.sans, color: '#e5e5e5' },
@@ -185,17 +233,32 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
           )}
         </div>
 
-        <div style={{ textAlign: 'right' }}>
-          {d.targetPrice && (
-            <div>
-              <Label style={{ textAlign: 'right' }}>12M Price Target</Label>
+        <div style={{ display: 'flex', gap: 28, alignItems: 'flex-start' }}>
+          {currentPrice != null && (
+            <div style={{ textAlign: 'right' }}>
+              <Label style={{ textAlign: 'right' }}>
+                {isLive ? 'Live Price' : 'Est. Price'}
+                {isLive && <span style={{ color: C.positive, marginLeft: 5 }}>●</span>}
+              </Label>
               <div style={{ fontFamily: C.mono, fontSize: 32, fontWeight: 700, color: '#fff' }}>
+                ${currentPrice.toFixed(2)}
+              </div>
+              {marketCap && (
+                <div style={{ fontFamily: C.mono, fontSize: 11, color: C.muted2, marginTop: 2 }}>
+                  {fmtDollar(marketCap)} mkt cap
+                </div>
+              )}
+            </div>
+          )}
+          {d.targetPrice && (
+            <div style={{ textAlign: 'right' }}>
+              <Label style={{ textAlign: 'right' }}>12M Target</Label>
+              <div style={{ fontFamily: C.mono, fontSize: 32, fontWeight: 700, color: C.accent }}>
                 ${typeof d.targetPrice === 'number' ? d.targetPrice.toFixed(2) : d.targetPrice}
               </div>
               {upside != null && (
                 <div style={{ fontFamily: C.mono, fontSize: 13, color: upside >= 0 ? C.positive : C.negative, marginTop: 2 }}>
                   {upside >= 0 ? '▲' : '▼'} {Math.abs(upside * 100).toFixed(1)}% {upside >= 0 ? 'upside' : 'downside'}
-                  {d.currentPrice && <span style={{ color: C.muted, marginLeft: 8 }}>from ${d.currentPrice}</span>}
                 </div>
               )}
             </div>
@@ -223,6 +286,7 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
           value={fmtDollar(fin.revenue)}
           sub={revenueGrowth != null ? pctSigned(revenueGrowth) + ' YoY' : undefined}
           color={revenueGrowth >= 0 ? C.positive : C.negative}
+          chart={revSeries.length >= 2 ? <Sparkline data={revSeries} width={64} height={22} color="auto" /> : null}
         />
         <Metric label="Gross Margin" value={pct(fin.grossMargin)} color={fin.grossMargin > 0.5 ? C.positive : fin.grossMargin > 0.3 ? C.warning : C.negative} />
         <Metric label="EBITDA Margin" value={pct(fin.ebitdaMargin)} color={fin.ebitdaMargin > 0.2 ? C.positive : fin.ebitdaMargin > 0.1 ? C.warning : C.negative} />
@@ -329,6 +393,18 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
           ))}
         </div>
       </Panel>
+
+      {/* ── FOOTBALL FIELD ── */}
+      {ffMethods.length >= 1 && (
+        <Panel style={{ marginBottom: 16 }}>
+          <SectionHeader>Valuation Summary — Football Field</SectionHeader>
+          <div style={{ fontSize: 12, color: C.muted2, marginBottom: 18, lineHeight: 1.6 }}>
+            Implied per-share value across methodologies. Bars show low–high ranges; the dashed line marks
+            {isLive ? ' the live market price' : ' the estimated price'}{d.targetPrice ? ' and the blue line the 12-month target' : ''}.
+          </div>
+          <FootballField methods={ffMethods} current={currentPrice} target={d.targetPrice} />
+        </Panel>
+      )}
 
       {/* ── DCF MODEL ── */}
       {dcf && (
@@ -439,6 +515,44 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
         </Panel>
       )}
 
+      {/* ── MONTE CARLO ── */}
+      {monteCarlo && (
+        <Panel style={{ marginBottom: 16 }}>
+          <SectionHeader>Monte Carlo Simulation — {monteCarlo.runs.toLocaleString()} Trials</SectionHeader>
+          <div style={{ fontSize: 12, color: C.muted2, marginBottom: 18, lineHeight: 1.6 }}>
+            Intrinsic value distribution from randomizing WACC (σ 1.5%), growth (σ 3%), and terminal growth (σ 0.5%).
+            Green bars are outcomes above {isLive ? 'the live price' : 'current price'}; red below.
+          </div>
+
+          <div style={{ ...s.grid4, marginBottom: 20 }}>
+            <Metric label="Median Value" value={'$' + monteCarlo.median.toFixed(2)} color={C.accent} large />
+            <Metric label="P10 – P90 Range" value={'$' + monteCarlo.p10.toFixed(0) + ' – $' + monteCarlo.p90.toFixed(0)} />
+            <Metric label="Mean" value={'$' + monteCarlo.mean.toFixed(2)} />
+            <Metric
+              label="Prob. of Upside"
+              value={monteCarlo.probUpside != null ? pct(monteCarlo.probUpside) : 'N/A'}
+              color={monteCarlo.probUpside > 0.6 ? C.positive : monteCarlo.probUpside > 0.4 ? C.warning : C.negative}
+            />
+          </div>
+
+          <Histogram histogram={monteCarlo.histogram} current={currentPrice} median={monteCarlo.median} />
+
+          <div style={{ display: 'flex', gap: 24, marginTop: 16, flexWrap: 'wrap' }}>
+            {[
+              ['P25', '$' + monteCarlo.p25.toFixed(0)],
+              ['Median', '$' + monteCarlo.median.toFixed(0)],
+              ['P75', '$' + monteCarlo.p75.toFixed(0)],
+              [isLive ? 'Live Price' : 'Current', currentPrice ? '$' + currentPrice.toFixed(0) : 'N/A'],
+            ].map(([k, v]) => (
+              <div key={k}>
+                <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted, marginBottom: 3 }}>{k}</div>
+                <div style={{ fontFamily: C.mono, fontSize: 13, color: '#e5e5e5' }}>{v}</div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
+
       {/* ── COMPS TABLE ── */}
       {d.comps && d.comps.length > 0 && (
         <Panel style={{ marginBottom: 16 }}>
@@ -537,6 +651,90 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
         </div>
       </Panel>
 
+      {/* ── QUALITY & SOLVENCY SCORES ── */}
+      {(altman || piotroski || dupont) && (
+        <Panel style={{ marginBottom: 16 }}>
+          <SectionHeader>Quantitative Quality Screens</SectionHeader>
+          <div style={{ display: 'grid', gridTemplateColumns: altman && piotroski ? '1fr 1fr' : '1fr', gap: 24 }}>
+
+            {/* Altman Z-Score */}
+            {altman && (
+              <div style={{ background: C.bg, borderRadius: 8, padding: '20px 22px', border: `1px solid ${C.border}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                  <div>
+                    <div style={{ fontFamily: C.sans, fontSize: 14, fontWeight: 600, color: '#e5e5e5' }}>Altman Z-Score</div>
+                    <div style={{ fontSize: 11, color: C.muted2, marginTop: 2 }}>Bankruptcy / distress predictor</div>
+                  </div>
+                  <ScoreGauge value={altman.score} max={5} color={altman.color} label={altman.zone}
+                    sublabel={altman.zone === 'SAFE' ? '> 2.99' : altman.zone === 'GREY' ? '1.81–2.99' : '< 1.81'} />
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  {altman.components.map((c, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: i < 4 ? `1px solid ${C.border}` : 'none' }}>
+                      <span style={{ fontFamily: C.mono, fontSize: 11, color: C.muted2 }}>{c.label}</span>
+                      <span style={{ fontFamily: C.mono, fontSize: 11, color: '#9ca3af' }}>
+                        {c.value.toFixed(2)} <span style={{ color: C.muted }}>×{c.weight}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Piotroski F-Score */}
+            {piotroski && (
+              <div style={{ background: C.bg, borderRadius: 8, padding: '20px 22px', border: `1px solid ${C.border}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                  <div>
+                    <div style={{ fontFamily: C.sans, fontSize: 14, fontWeight: 600, color: '#e5e5e5' }}>Piotroski F-Score</div>
+                    <div style={{ fontSize: 11, color: C.muted2, marginTop: 2 }}>9-point fundamental quality</div>
+                  </div>
+                  <ScoreGauge value={piotroski.score} max={piotroski.max} color={piotroski.color}
+                    label={piotroski.rating} sublabel={piotroski.score + ' / ' + piotroski.max} />
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  {piotroski.tests.map((t, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+                      <span style={{ fontFamily: C.mono, fontSize: 11, color: C.muted2 }}>{t.label}</span>
+                      <span style={{ fontFamily: C.mono, fontSize: 12, color: t.pass ? C.positive : C.negative, fontWeight: 700 }}>
+                        {t.pass ? '✓' : '✗'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* DuPont ROE decomposition */}
+          {dupont && (
+            <>
+              <Divider />
+              <Label style={{ marginBottom: 14 }}>DuPont ROE Decomposition</Label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ background: recColor + '12', border: `1px solid ${recColor}30`, borderRadius: 6, padding: '12px 18px', minWidth: 110 }}>
+                  <div style={{ fontFamily: C.mono, fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: 1 }}>ROE</div>
+                  <div style={{ fontFamily: C.mono, fontSize: 20, fontWeight: 700, color: '#fff' }}>{pct(dupont.roe)}</div>
+                </div>
+                <span style={{ fontFamily: C.mono, fontSize: 18, color: C.muted }}>=</span>
+                {dupont.components.map((c, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, padding: '12px 18px', minWidth: 120 }}>
+                      <div style={{ fontFamily: C.mono, fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: 1 }}>{c.label}</div>
+                      <div style={{ fontFamily: C.mono, fontSize: 18, fontWeight: 600, color: '#e5e5e5' }}>
+                        {c.fmt === 'pct' ? pct(c.value) : c.value.toFixed(2) + 'x'}
+                      </div>
+                      <div style={{ fontSize: 9, color: C.muted2, marginTop: 2 }}>{c.hint}</div>
+                    </div>
+                    {i < dupont.components.length - 1 && <span style={{ fontFamily: C.mono, fontSize: 18, color: C.muted }}>×</span>}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </Panel>
+      )}
+
       {/* ── ANALYST NOTE ── */}
       {d.analystNote && (
         <div style={{
@@ -551,6 +749,23 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
           </p>
         </div>
       )}
+
+      {/* ── METHODOLOGY & DISCLOSURE ── */}
+      <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
+        <Label style={{ marginBottom: 10 }}>Methodology & Disclosure</Label>
+        <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.7, fontFamily: C.sans }}>
+          <strong style={{ color: C.muted2 }}>Data:</strong> Fundamentals sourced from the latest annual (10-K) filings via the SEC EDGAR XBRL API.
+          {isLive ? ' Quotes are live intraday prices from public market data.' : ' Price reflects a model estimate (live quote unavailable).'}{' '}
+          <strong style={{ color: C.muted2 }}>DCF:</strong> Two-stage unlevered FCF model over 8 years with a Gordon-growth terminal value;
+          intrinsic value = (Σ PV of FCF + PV of terminal value − net debt) ÷ shares outstanding.{' '}
+          <strong style={{ color: C.muted2 }}>Monte Carlo:</strong> {monteCarlo ? monteCarlo.runs.toLocaleString() : '0'} trials drawing WACC, growth, and terminal growth from normal distributions.{' '}
+          <strong style={{ color: C.muted2 }}>Altman Z:</strong> classic five-factor distress model. <strong style={{ color: C.muted2 }}>Piotroski F:</strong> nine-point fundamental screen.{' '}
+          Qualitative narrative, price target, and peer set generated by an AI language model and may contain errors.
+          <br /><br />
+          <em>This report is generated for educational and informational purposes only and does not constitute investment advice,
+          a recommendation, or a solicitation to buy or sell any security. Conduct your own due diligence.</em>
+        </div>
+      </div>
     </div>
   )
 }

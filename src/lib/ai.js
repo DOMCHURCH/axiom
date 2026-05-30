@@ -4,10 +4,19 @@ export async function generateResearch({ ticker, financials, apiKey, provider, m
   const fin = financials
   const t = ticker.toUpperCase()
 
+  const marketBlock = fin.price != null
+    ? `=== LIVE MARKET DATA ===
+Current Price:         $${fin.price.toFixed(2)}
+Market Cap:            ${dollar(fin.marketCap)}
+(Anchor your 12-month price target to this live price. Upside/downside must be measured from $${fin.price.toFixed(2)}.)
+
+`
+    : ''
+
   const dataBlock = `
 COMPANY: ${fin.companyName} (${t})
 
-=== INCOME STATEMENT ===
+${marketBlock}=== INCOME STATEMENT ===
 Revenue (TTM):         ${dollar(fin.revenue)}
 Revenue (Prior Year):  ${dollar(fin.prevRevenue)}
 Revenue Growth YoY:    ${pct(fin.revenueGrowth)}

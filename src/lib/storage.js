@@ -17,7 +17,7 @@ export function detectProvider(key) {
   if (!key) return null
   if (key.startsWith('gsk_')) return { provider: 'groq', model: 'llama-3.3-70b-versatile' }
   if (key.startsWith('sk-or-')) return { provider: 'openrouter', model: 'meta-llama/llama-3.3-70b-instruct' }
-  if (key.startsWith('sk-ant-')) return { provider: 'anthropic', model: 'claude-3-5-haiku-20241022' }
+  if (key.startsWith('sk-ant-')) return { provider: 'anthropic', model: 'claude-opus-4-8' }
   if (key.startsWith('sk-')) return { provider: 'openai', model: 'gpt-4o-mini' }
   return null
 }

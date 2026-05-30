@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { detectProvider } from '../lib/storage.js'
 
 const PROVIDERS = [
-  { prefix: 'sk-ant-', name: 'Anthropic', model: 'claude-3-5-haiku-20241022', color: '#d97706' },
+  { prefix: 'sk-ant-', name: 'Anthropic', model: 'claude-opus-4-8', color: '#d97706' },
   { prefix: 'sk-or-', name: 'OpenRouter', model: 'meta-llama/llama-3.3-70b-instruct', color: '#8b5cf6' },
   { prefix: 'gsk_', name: 'Groq', model: 'llama-3.3-70b-versatile', color: '#f59e0b' },
   { prefix: 'sk-', name: 'OpenAI', model: 'gpt-4o-mini', color: '#38bdf8' },
