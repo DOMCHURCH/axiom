@@ -21,7 +21,10 @@ export function altmanZScore(fin) {
   const x1 = workingCapital / totalAssets
   const x2 = retainedEarnings / totalAssets
   const x3 = ebit / totalAssets
-  const x4 = marketCap / totalLiabilities
+  // Cap X4: asset-light mega-caps (tiny liabilities, huge market cap) push this
+  // ratio to absurd levels that dominate and distort the score. Winsorize at 20x
+  // (≈ contribution of 12 to Z) — a common practitioner adjustment.
+  const x4 = Math.min(marketCap / totalLiabilities, 20)
   const x5 = revenue / totalAssets
 
   const z = 1.2 * x1 + 1.4 * x2 + 3.3 * x3 + 0.6 * x4 + 1.0 * x5
