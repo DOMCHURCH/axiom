@@ -682,7 +682,7 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
                     <div style={{ fontFamily: C.sans, fontSize: 14, fontWeight: 600, color: '#e5e5e5' }}>Altman Z-Score</div>
                     <div style={{ fontSize: 11, color: C.muted2, marginTop: 2 }}>Bankruptcy / distress predictor</div>
                   </div>
-                  <ScoreGauge value={altman.score} max={5} color={altman.color} label={altman.zone}
+                  <ScoreGauge value={altman.score} max={12} color={altman.color} label={altman.zone}
                     sublabel={altman.zone === 'SAFE' ? '> 2.99' : altman.zone === 'GREY' ? '1.81–2.99' : '< 1.81'} />
                 </div>
                 <div style={{ marginTop: 8 }}>
