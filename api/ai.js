@@ -47,20 +47,6 @@ const PROVIDERS = {
     return data.choices[0].message.content
   },
 
-  cerebras: async ({ prompt, apiKey, model, systemPrompt }) => {
-    const messages = []
-    if (systemPrompt) messages.push({ role: 'system', content: systemPrompt })
-    messages.push({ role: 'user', content: prompt })
-    const r = await fetch('https://api.cerebras.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, messages, max_tokens: 8096 }),
-    })
-    const data = await r.json()
-    if (!r.ok) throw new Error(data.error?.message || `Cerebras: ${r.status}`)
-    return data.choices[0].message.content
-  },
-
   openrouter: async ({ prompt, apiKey, model, systemPrompt }) => {
     const messages = []
     if (systemPrompt) messages.push({ role: 'system', content: systemPrompt })
