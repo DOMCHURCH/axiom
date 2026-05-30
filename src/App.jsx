@@ -89,7 +89,7 @@ export default function App() {
         model: provider.model,
         onProgress: (msg) => {
           setProgress(msg)
-          setProgressPct(p => Math.min(p + 30, 90))
+          setProgressPct(70)
         },
       })
 
