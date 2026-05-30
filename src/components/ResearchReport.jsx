@@ -111,12 +111,19 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
 
   // DCF inputs — prefer AI assumptions over raw data
   const fcf = fin.fcf || (fin.operatingCF ? fin.operatingCF * 0.85 : null)
+
+  // Normalize a rate field: AI sometimes returns 8.5 meaning 8.5% (should be 0.085)
+  const normRate = (v, fallback) => {
+    if (v == null || isNaN(v)) return fallback
+    return Math.abs(v) > 1 ? v / 100 : v  // >1 means it's already a percentage number
+  }
+
   const dcfIn = {
     fcf,
-    nearTermGrowth: d.dcfAssumptions?.nearTermGrowth ?? 0.08,
-    longTermGrowth: d.dcfAssumptions?.longTermGrowth ?? 0.05,
-    terminalGrowth: d.dcfAssumptions?.terminalGrowthRate ?? 0.025,
-    wacc: d.dcfAssumptions?.wacc ?? 0.09,
+    nearTermGrowth: normRate(d.dcfAssumptions?.nearTermGrowth, 0.08),
+    longTermGrowth: normRate(d.dcfAssumptions?.longTermGrowth, 0.05),
+    terminalGrowth: normRate(d.dcfAssumptions?.terminalGrowthRate, 0.025),
+    wacc: normRate(d.dcfAssumptions?.wacc, 0.09),
     shares: fin.shares,
     netDebt: fin.netDebt,
   }
@@ -160,9 +167,19 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
   const piotroski = piotroskiFScore(fin)
   const dupont = dupontROE(fin)
 
+  // ── Normalize comps — AI sometimes returns percentages as whole numbers ──
+  const normalizedComps = (d.comps || []).map(c => ({
+    ...c,
+    revenueGrowth: normRate(c.revenueGrowth, null),
+    grossMargin: c.grossMargin != null ? (Math.abs(c.grossMargin) > 1 ? c.grossMargin / 100 : c.grossMargin) : null,
+    // Sanity-clamp multiples — anything >200x is almost certainly a data error
+    evEbitda: c.evEbitda != null && c.evEbitda > 0 && c.evEbitda < 200 ? c.evEbitda : null,
+    peRatio: c.peRatio != null && c.peRatio > 0 && c.peRatio < 500 ? c.peRatio : null,
+  }))
+
   // ── Football field: per-share valuation ranges across methods ──
-  const compEvEbitda = (d.comps || []).map(c => c.evEbitda).filter(v => v != null && isFinite(v) && v > 0)
-  const compPe = (d.comps || []).map(c => c.peRatio).filter(v => v != null && isFinite(v) && v > 0)
+  const compEvEbitda = normalizedComps.map(c => c.evEbitda).filter(v => v != null && isFinite(v) && v > 0)
+  const compPe = normalizedComps.map(c => c.peRatio).filter(v => v != null && isFinite(v) && v > 0)
 
   const perShareFromEvEbitda = (mult) => {
     if (!fin.ebitda || !fin.shares) return null
@@ -554,7 +571,7 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
       )}
 
       {/* ── COMPS TABLE ── */}
-      {d.comps && d.comps.length > 0 && (
+      {normalizedComps.length > 0 && (
         <Panel style={{ marginBottom: 16 }}>
           <SectionHeader>Comparable Company Analysis</SectionHeader>
           <div style={{ overflowX: 'auto' }}>
@@ -573,7 +590,7 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
                 </tr>
               </thead>
               <tbody>
-                {d.comps.map((c, i) => (
+                {normalizedComps.map((c, i) => (
                   <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : C.bg + '80' }}>
                     <td style={{ padding: '10px 14px', borderBottom: `1px solid ${C.border}` }}>
                       <div style={{ color: C.accent, fontWeight: 600 }}>{c.ticker}</div>
