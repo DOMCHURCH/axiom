@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { UserButton, SignInButton, useUser } from '@clerk/clerk-react'
+import { UserButton, SignInButton, useUser, useAuth } from '@clerk/clerk-react'
 import ApiKeyModal from './components/ApiKeyModal.jsx'
 import ResearchReport from './components/ResearchReport.jsx'
 import { loadKey, saveKey, detectProvider, saveToHistory, loadHistory } from './lib/storage.js'
@@ -55,14 +55,16 @@ export default function App() {
   const [currentTicker, setCurrentTicker] = useState('')
   const [history, setHistory] = useState([])
   const inputRef = useRef(null)
+  const { isSignedIn } = useUser()
+  const { getToken } = useAuth()
 
   useEffect(() => {
     const key = loadKey()
     if (key) {
       const det = detectProvider(key)
       if (det) { setApiKey(key); setProvider(det) }
-      else setShowKeyModal(true)
-    } else {
+      else if (!isSignedIn) setShowKeyModal(true)
+    } else if (!isSignedIn) {
       setShowKeyModal(true)
     }
     setHistory(loadHistory())
@@ -101,12 +103,15 @@ export default function App() {
       setFinancials(edgarData.financials)
       setProgressPct(35)
 
+      const clerkToken = isSignedIn ? await getToken() : null
+
       const result = await generateResearch({
         ticker: sym,
         financials: edgarData.financials,
-        apiKey,
-        provider: provider.provider,
-        model: provider.model,
+        apiKey: apiKey || null,
+        provider: provider?.provider || null,
+        model: provider?.model || null,
+        clerkToken,
         onProgress: (msg) => {
           setProgress(msg)
           setProgressPct(p => Math.min(p + 20, 92))
@@ -265,13 +270,13 @@ export default function App() {
           />
           <button
             type="submit"
-            disabled={loading || !ticker.trim() || !provider}
+            disabled={loading || !ticker.trim() || (!provider && !isSignedIn)}
             style={{
-              background: loading || !ticker.trim() || !provider ? '#1a1a1a' : C.accent,
-              color: loading || !ticker.trim() || !provider ? C.muted : '#000',
+              background: loading || !ticker.trim() || (!provider && !isSignedIn) ? '#1a1a1a' : C.accent,
+              color: loading || !ticker.trim() || (!provider && !isSignedIn) ? C.muted : '#000',
               border: 'none', borderRadius: 8, padding: '15px 24px',
               fontFamily: C.mono, fontSize: 13, fontWeight: 700,
-              cursor: loading || !ticker.trim() || !provider ? 'not-allowed' : 'pointer',
+              cursor: loading || !ticker.trim() || (!provider && !isSignedIn) ? 'not-allowed' : 'pointer',
               letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 8,
               transition: 'background 0.15s',
             }}
