@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { UserButton, SignInButton, useUser } from '@clerk/clerk-react'
 import ApiKeyModal from './components/ApiKeyModal.jsx'
 import ResearchReport from './components/ResearchReport.jsx'
 import { loadKey, saveKey, detectProvider, saveToHistory, loadHistory } from './lib/storage.js'
@@ -12,8 +13,27 @@ const C = {
 }
 
 const REC_COLOR = { BUY: '#22c55e', HOLD: '#f59e0b', SELL: '#f87171' }
+const clerkEnabled = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
 const POPULAR = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'AMZN', 'TSLA', 'JPM', 'V', 'NFLX']
+
+function AppUserButton() {
+  const { isSignedIn } = useUser()
+  if (isSignedIn) {
+    return <UserButton afterSignOutUrl="/" appearance={{ variables: { colorPrimary: '#38bdf8' } }} />
+  }
+  return (
+    <SignInButton mode="modal">
+      <button style={{
+        fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#6b7280',
+        background: 'transparent', border: '1px solid #1e1e1e',
+        borderRadius: 4, padding: '4px 10px', cursor: 'pointer',
+      }}>
+        Sign in
+      </button>
+    </SignInButton>
+  )
+}
 
 function Spinner() {
   return (
@@ -181,6 +201,7 @@ export default function App() {
             </button>
             {provider && <div style={s.chip(false)}>{provider.provider.toUpperCase()}</div>}
             <button style={s.chip(false)} onClick={() => setShowKeyModal(true)}>API Key</button>
+            {clerkEnabled && <AppUserButton />}
           </div>
         </nav>
         {showKeyModal && <ApiKeyModal onSave={handleKeySave} />}
@@ -201,6 +222,7 @@ export default function App() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {provider && <div style={s.chip(true)}>{provider.provider.toUpperCase()} · {provider.model.split('/').pop()}</div>}
           <button style={s.chip(false)} onClick={() => setShowKeyModal(true)}>Change Key</button>
+          {clerkEnabled && <AppUserButton />}
         </div>
       </nav>
 

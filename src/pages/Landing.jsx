@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ResearchReport from '../components/ResearchReport.jsx'
+import { SignInButton, SignUpButton, UserButton, useUser } from '@clerk/clerk-react'
 
 const C = {
   bg: '#0a0a0a', panel: '#111', border: '#1e1e1e', border2: '#252525',
@@ -51,6 +52,41 @@ function Spinner() {
       border: `2px solid #38bdf840`, borderTopColor: '#38bdf8',
       borderRadius: '50%', animation: 'spin 0.7s linear infinite',
     }} />
+  )
+}
+
+const clerkEnabled = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+
+function AuthNav({ C }) {
+  const { isSignedIn } = useUser()
+  if (isSignedIn) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <UserButton afterSignOutUrl="/" appearance={{ variables: { colorPrimary: '#38bdf8' } }} />
+      </div>
+    )
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <SignInButton mode="modal">
+        <button style={{
+          fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#6b7280',
+          background: 'transparent', border: '1px solid #1e1e1e',
+          borderRadius: 5, padding: '7px 16px', cursor: 'pointer',
+        }}>
+          Sign in
+        </button>
+      </SignInButton>
+      <SignUpButton mode="modal">
+        <button style={{
+          fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#000',
+          background: '#38bdf8', border: 'none',
+          borderRadius: 5, padding: '7px 16px', cursor: 'pointer', fontWeight: 700,
+        }}>
+          Sign up
+        </button>
+      </SignUpButton>
+    </div>
   )
 }
 
@@ -166,18 +202,21 @@ export default function Landing() {
         backdropFilter: 'blur(12px)', zIndex: 10,
       }}>
         <div style={{ fontFamily: C.mono, fontSize: 15, fontWeight: 700, color: C.accent, letterSpacing: 3 }}>AXIOM</div>
-        <button
-          onClick={() => navigate('/app')}
-          style={{
-            fontFamily: C.mono, fontSize: 12, color: C.muted2, background: 'transparent',
-            border: `1px solid ${C.border}`, borderRadius: 5, padding: '7px 18px',
-            cursor: 'pointer', transition: 'border-color 0.15s, color 0.15s',
-          }}
-          onMouseEnter={e => { e.target.style.borderColor = C.accent + '66'; e.target.style.color = C.accent }}
-          onMouseLeave={e => { e.target.style.borderColor = C.border; e.target.style.color = C.muted2 }}
-        >
-          Launch App →
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {clerkEnabled ? <AuthNav C={C} /> : null}
+          <button
+            onClick={() => navigate('/app')}
+            style={{
+              fontFamily: C.mono, fontSize: 12, color: C.muted2, background: 'transparent',
+              border: `1px solid ${C.border}`, borderRadius: 5, padding: '7px 18px',
+              cursor: 'pointer', transition: 'border-color 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => { e.target.style.borderColor = C.accent + '66'; e.target.style.color = C.accent }}
+            onMouseLeave={e => { e.target.style.borderColor = C.border; e.target.style.color = C.muted2 }}
+          >
+            Launch App →
+          </button>
+        </div>
       </nav>
 
       {/* ── HERO ── */}
