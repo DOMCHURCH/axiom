@@ -26,7 +26,7 @@ function AppRoutes() {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     {PUBLISHABLE_KEY ? (
-      <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignInUrl="/app" afterSignUpUrl="/app">
+      <ClerkProvider publishableKey={PUBLISHABLE_KEY} signInUrl="/" signUpUrl="/" afterSignInUrl="/app" afterSignUpUrl="/app">
         <AppRoutes />
       </ClerkProvider>
     ) : (
