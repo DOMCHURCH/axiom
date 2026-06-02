@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { UserButton, SignInButton, useUser, useAuth } from '@clerk/clerk-react'
 import ResearchReport from './components/ResearchReport.jsx'
 import { saveToHistory, loadHistory } from './lib/storage.js'
@@ -56,8 +57,19 @@ export default function App() {
   const inputRef = useRef(null)
   const { isSignedIn } = useUser()
   const { getToken } = useAuth()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   useEffect(() => { setHistory(loadHistory()) }, [])
+
+  // Auto-run if ?q= param is present (e.g. redirected from landing page)
+  useEffect(() => {
+    const q = searchParams.get('q')
+    if (q && isSignedIn) {
+      setTicker(q.toUpperCase())
+      runAnalysis(q.toUpperCase())
+    }
+  }, [isSignedIn, searchParams])
 
   useEffect(() => {
     if (!isSignedIn || !clerkEnabled) return
@@ -94,10 +106,13 @@ export default function App() {
       setProgressPct(100); setReport(result); setCurrentTicker(sym)
       saveToHistory(sym, { ...result, financials: edgarData.financials })
       setHistory(loadHistory())
-      getToken().then(token =>
-        fetch('/api/usage', { headers: { Authorization: `Bearer ${token}` } })
-          .then(r => r.json()).then(setUsage).catch(() => {})
-      )
+      getToken().then(token => {
+        const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+        // Save to cloud history
+        fetch('/api/reports', { method: 'POST', headers, body: JSON.stringify({ ticker: sym, result }) }).catch(() => {})
+        // Refresh usage
+        fetch('/api/usage', { headers }).then(r => r.json()).then(setUsage).catch(() => {})
+      })
     } catch (err) {
       setError(err.limitReached ? `Monthly limit reached. Pro plan coming soon — resets ${new Date(err.resetAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}.` : err.message)
     } finally {
@@ -172,6 +187,12 @@ export default function App() {
                 {usage.remaining}/{FREE_LIMIT} reports
               </span>
             </div>
+          )}
+          {clerkEnabled && isSignedIn && (
+            <button onClick={() => navigate('/account')} style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 4, padding: '5px 12px', cursor: 'pointer', transition: 'color 0.15s' }}
+              onMouseEnter={e => e.target.style.color = T.text}
+              onMouseLeave={e => e.target.style.color = T.muted2}
+            >Account</button>
           )}
           {clerkEnabled && <AppUserButton />}
         </div>

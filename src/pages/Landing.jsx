@@ -268,6 +268,16 @@ function Hero({ navigate, runDemo, ticker, setTicker, loading, progress, progres
   const { isSignedIn } = useUser()
   const POPULAR = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'AMZN']
 
+  function handleGenerate(t) {
+    if (!t?.trim()) return
+    const sym = t.trim().toUpperCase()
+    if (isSignedIn) {
+      navigate(`/app?q=${sym}`)
+    } else {
+      runDemo(sym)
+    }
+  }
+
   return (
     <section style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '120px 24px 80px', position: 'relative', overflow: 'hidden' }}>
       {/* Grid background */}
@@ -295,7 +305,7 @@ function Hero({ navigate, runDemo, ticker, setTicker, loading, progress, progres
 
             {/* Input */}
             <div style={{ maxWidth: 440 }}>
-              <form onSubmit={e => { e.preventDefault(); runDemo(ticker) }}>
+              <form onSubmit={e => { e.preventDefault(); handleGenerate(ticker) }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 0, background: T.panel, border: `1px solid ${loading ? T.accent + '66' : T.border2}`, borderRadius: 8, overflow: 'hidden', transition: 'border-color 0.15s' }}>
                     <span style={{ fontFamily: T.mono, fontSize: 12, color: T.muted, padding: '0 12px' }}>$</span>
@@ -318,7 +328,7 @@ function Hero({ navigate, runDemo, ticker, setTicker, loading, progress, progres
                     whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 8,
                     transition: 'all 0.15s',
                   }}>
-                    {loading ? <><Spinner /> Running...</> : 'Generate →'}
+                    {loading ? <><Spinner /> Running...</> : isSignedIn ? 'Analyze →' : 'Preview →'}
                   </button>
                 </div>
               </form>
@@ -339,7 +349,7 @@ function Hero({ navigate, runDemo, ticker, setTicker, loading, progress, progres
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>Try:</span>
                 {POPULAR.map(t => (
-                  <button key={t} onClick={() => { setTicker(t); runDemo(t) }}
+                  <button key={t} onClick={() => { setTicker(t); handleGenerate(t) }}
                     style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 4, padding: '4px 10px', cursor: 'pointer', transition: 'all 0.1s' }}
                     onMouseEnter={e => { e.target.style.borderColor = T.accentBd; e.target.style.color = T.accent }}
                     onMouseLeave={e => { e.target.style.borderColor = T.border; e.target.style.color = T.muted2 }}
