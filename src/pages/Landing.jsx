@@ -254,9 +254,6 @@ function Nav({ navigate }) {
         )}
         {clerkEnabled && isSignedIn && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button onClick={() => navigate('/app')} style={{ fontFamily: T.mono, fontSize: 12, color: T.accent, background: T.accentLo, border: `1px solid ${T.accentBd}`, borderRadius: 6, padding: '7px 16px', cursor: 'pointer' }}>
-              Open app →
-            </button>
             <UserButton afterSignOutUrl="/" />
           </div>
         )}
@@ -558,17 +555,11 @@ function Pricing({ navigate }) {
                 <span style={{ color: T.green }}>✓</span> {f}
               </div>
             ))}
-            {isSignedIn ? (
-              <button onClick={() => navigate('/app')} style={{ display: 'block', width: '100%', marginTop: 32, background: T.accentLo, color: T.accent, border: `1px solid ${T.accentBd}`, borderRadius: 8, padding: '14px 0', fontFamily: T.mono, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                Open app →
+            <SignUpButton mode="modal">
+              <button style={{ display: 'block', width: '100%', marginTop: 32, background: T.accent, color: '#000', border: 'none', borderRadius: 8, padding: '14px 0', fontFamily: T.mono, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                Get started free →
               </button>
-            ) : (
-              <SignUpButton mode="modal">
-                <button style={{ display: 'block', width: '100%', marginTop: 32, background: T.accent, color: '#000', border: 'none', borderRadius: 8, padding: '14px 0', fontFamily: T.mono, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                  Get started free →
-                </button>
-              </SignUpButton>
-            )}
+            </SignUpButton>
           </div>
 
           {/* Pro */}
