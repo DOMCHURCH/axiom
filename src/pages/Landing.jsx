@@ -345,9 +345,9 @@ export default function Landing() {
           )}
 
           <div style={{ marginTop: 22, display: 'flex', justifyContent: 'center', gap: 20, fontFamily: C.mono, fontSize: 10, color: C.muted }}>
-            <span>1 free demo / day</span>
+            <span>Free preview above</span>
             <span>·</span>
-            <span>No signup required</span>
+            <span>2 full reports/month free</span>
             <span>·</span>
             <span>Real SEC EDGAR data</span>
           </div>
@@ -411,18 +411,18 @@ export default function Landing() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          {/* Free / BYOK */}
+          {/* Free */}
           <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: '32px 28px' }}>
-            <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted2, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 10 }}>Free · BYOK</div>
+            <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted2, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 10 }}>Free</div>
             <div style={{ fontFamily: C.mono, fontSize: 40, fontWeight: 700, color: '#fff', marginBottom: 6 }}>$0</div>
             <div style={{ fontSize: 13, color: C.muted2, marginBottom: 28, lineHeight: 1.6 }}>
-              Bring your own API key. Unlimited reports, zero cost.
+              2 full reports per month. No API key. No credit card.
             </div>
             {[
-              'Unlimited reports',
-              'Groq (free), Anthropic, OpenAI, OpenRouter',
+              '2 reports / month',
               'Full DCF + Monte Carlo simulation',
               'Altman Z-Score + Piotroski F-Score',
+              'Comps table + risk matrix',
               'PDF export',
             ].map(f => (
               <div key={f} style={{ display: 'flex', gap: 10, marginBottom: 10, fontSize: 13, color: '#9ca3af' }}>
@@ -441,7 +441,7 @@ export default function Landing() {
               onMouseEnter={e => e.target.style.background = C.accent + '12'}
               onMouseLeave={e => e.target.style.background = 'transparent'}
             >
-              Launch app →
+              Get started free →
             </button>
           </div>
 

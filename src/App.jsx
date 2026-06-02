@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { UserButton, SignInButton, useUser, useAuth } from '@clerk/clerk-react'
-import ApiKeyModal from './components/ApiKeyModal.jsx'
 import ResearchReport from './components/ResearchReport.jsx'
-import { loadKey, saveKey, detectProvider, saveToHistory, loadHistory } from './lib/storage.js'
+import { saveToHistory, loadHistory } from './lib/storage.js'
 import { generateResearch } from './lib/ai.js'
 
 const C = {
@@ -13,9 +12,12 @@ const C = {
 }
 
 const REC_COLOR = { BUY: '#22c55e', HOLD: '#f59e0b', SELL: '#f87171' }
+const FREE_LIMIT = 2
 const clerkEnabled = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
-const POPULAR = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'AMZN', 'TSLA', 'JPM', 'V', 'NFLX']
+function Spinner() {
+  return <div style={{ display: 'inline-block', width: 14, height: 14, border: `2px solid #38bdf840`, borderTopColor: '#38bdf8', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+}
 
 function AppUserButton() {
   const { isSignedIn } = useUser()
@@ -24,27 +26,14 @@ function AppUserButton() {
   }
   return (
     <SignInButton mode="modal">
-      <button style={{
-        fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#6b7280',
-        background: 'transparent', border: '1px solid #1e1e1e',
-        borderRadius: 4, padding: '4px 10px', cursor: 'pointer',
-      }}>
+      <button style={{ fontFamily: C.mono, fontSize: 11, color: C.muted2, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 4, padding: '4px 10px', cursor: 'pointer' }}>
         Sign in
       </button>
     </SignInButton>
   )
 }
 
-function Spinner() {
-  return (
-    <div style={{ display: 'inline-block', width: 14, height: 14, border: `2px solid #38bdf840`, borderTopColor: '#38bdf8', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-  )
-}
-
 export default function App() {
-  const [apiKey, setApiKey] = useState('')
-  const [provider, setProvider] = useState(null)
-  const [showKeyModal, setShowKeyModal] = useState(false)
   const [ticker, setTicker] = useState('')
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState('')
@@ -54,40 +43,35 @@ export default function App() {
   const [financials, setFinancials] = useState(null)
   const [currentTicker, setCurrentTicker] = useState('')
   const [history, setHistory] = useState([])
+  const [usage, setUsage] = useState(null)
   const inputRef = useRef(null)
   const { isSignedIn } = useUser()
   const { getToken } = useAuth()
 
   useEffect(() => {
-    const key = loadKey()
-    if (key) {
-      const det = detectProvider(key)
-      if (det) { setApiKey(key); setProvider(det) }
-      else if (!isSignedIn) setShowKeyModal(true)
-    } else if (!isSignedIn) {
-      setShowKeyModal(true)
-    }
     setHistory(loadHistory())
   }, [])
 
-  // Inject keyframe animation
+  useEffect(() => {
+    if (!isSignedIn || !clerkEnabled) return
+    getToken().then(token => {
+      fetch('/api/usage', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(d => setUsage(d))
+        .catch(() => {})
+    })
+  }, [isSignedIn, getToken])
+
   useEffect(() => {
     const style = document.createElement('style')
-    style.textContent = `@keyframes spin { to { transform: rotate(360deg) } } @keyframes fadeIn { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }`
+    style.textContent = `@keyframes spin { to { transform: rotate(360deg) } } @keyframes fadeIn { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } } @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }`
     document.head.appendChild(style)
     return () => document.head.removeChild(style)
   }, [])
 
-  function handleKeySave(key, det) {
-    saveKey(key)
-    setApiKey(key)
-    setProvider(det)
-    setShowKeyModal(false)
-    setTimeout(() => inputRef.current?.focus(), 100)
-  }
-
   async function runAnalysis(t) {
     if (!t?.trim() || loading) return
+    if (!isSignedIn) { setError('Sign in to run reports — it\'s free.'); return }
     const sym = t.trim().toUpperCase()
     setLoading(true)
     setError('')
@@ -101,21 +85,14 @@ export default function App() {
       const edgarData = await edgarRes.json()
       if (!edgarRes.ok) throw new Error(edgarData.error || 'SEC EDGAR lookup failed')
       setFinancials(edgarData.financials)
-      setProgressPct(35)
+      setProgressPct(40)
 
-      const clerkToken = isSignedIn ? await getToken() : null
-
+      const clerkToken = await getToken()
       const result = await generateResearch({
         ticker: sym,
         financials: edgarData.financials,
-        apiKey: apiKey || null,
-        provider: provider?.provider || null,
-        model: provider?.model || null,
         clerkToken,
-        onProgress: (msg) => {
-          setProgress(msg)
-          setProgressPct(p => Math.min(p + 20, 92))
-        },
+        onProgress: (msg) => { setProgress(msg); setProgressPct(p => Math.min(p + 20, 92)) },
       })
 
       setProgressPct(100)
@@ -123,24 +100,22 @@ export default function App() {
       setCurrentTicker(sym)
       saveToHistory(sym, { ...result, financials: edgarData.financials })
       setHistory(loadHistory())
+      // Refresh usage count
+      getToken().then(token => {
+        fetch('/api/usage', { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.json()).then(d => setUsage(d)).catch(() => {})
+      })
     } catch (err) {
-      setError(err.message)
+      if (err.limitReached) {
+        setError(`You've used your ${FREE_LIMIT} free reports this month. Pro plan coming soon!`)
+      } else {
+        setError(err.message)
+      }
     } finally {
       setLoading(false)
       setProgress('')
       setProgressPct(0)
     }
-  }
-
-  function handleSubmit(e) {
-    e.preventDefault()
-    runAnalysis(ticker)
-  }
-
-  function loadFromHistory(h) {
-    setReport(h.report)
-    setCurrentTicker(h.ticker)
-    setFinancials(h.report?.financials || null)
   }
 
   const s = {
@@ -160,56 +135,44 @@ export default function App() {
     }),
   }
 
+  function NavRight() {
+    return (
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        {usage && (
+          <div style={{ fontFamily: C.mono, fontSize: 11, color: usage.remaining === 0 ? C.negative : C.muted2 }}>
+            {usage.remaining}/{FREE_LIMIT} reports left
+          </div>
+        )}
+        {clerkEnabled && <AppUserButton />}
+      </div>
+    )
+  }
+
   if (report) {
     return (
       <div style={s.app} className="axiom-report-root">
-        <style>{`
-          @keyframes spin { to { transform: rotate(360deg) } }
-          @media print {
-            .axiom-no-print { display: none !important; }
-            .axiom-report-root { background: #fff !important; }
-            body { background: #fff !important; }
-            @page { margin: 14mm; }
-          }
-        `}</style>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}@media print{.axiom-no-print{display:none!important}.axiom-report-root{background:#fff!important}body{background:#fff!important}@page{margin:14mm}}`}</style>
         <nav style={s.nav} className="axiom-no-print">
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={s.logo}>AXIOM</div>
             <div style={{ width: 1, height: 20, background: C.border }} />
-            <button
-              style={{ ...s.chip(false), fontSize: 12 }}
-              onClick={() => { setReport(null); setTicker(''); setTimeout(() => inputRef.current?.focus(), 50) }}
-            >
+            <button style={{ ...s.chip(false), fontSize: 12 }} onClick={() => { setReport(null); setTicker(''); setTimeout(() => inputRef.current?.focus(), 50) }}>
               ← New Search
             </button>
-            <span style={{ fontFamily: C.mono, fontSize: 12, color: C.muted2 }}>
-              {currentTicker}
-            </span>
+            <span style={{ fontFamily: C.mono, fontSize: 12, color: C.muted2 }}>{currentTicker}</span>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {report.structured?.recommendation && (
-              <div style={{
-                fontFamily: C.mono, fontSize: 11, fontWeight: 700,
-                color: REC_COLOR[report.structured.recommendation],
-                background: REC_COLOR[report.structured.recommendation] + '15',
-                border: `1px solid ${REC_COLOR[report.structured.recommendation]}33`,
-                padding: '4px 10px', borderRadius: 4,
-              }}>
+              <div style={{ fontFamily: C.mono, fontSize: 11, fontWeight: 700, color: REC_COLOR[report.structured.recommendation], background: REC_COLOR[report.structured.recommendation] + '15', border: `1px solid ${REC_COLOR[report.structured.recommendation]}33`, padding: '4px 10px', borderRadius: 4 }}>
                 {report.structured.recommendation}
               </div>
             )}
-            <button
-              style={{ ...s.chip(true), display: 'flex', alignItems: 'center', gap: 6 }}
-              onClick={() => window.print()}
-            >
+            <button style={{ ...s.chip(true), display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => window.print()}>
               ⤓ Export PDF
             </button>
-            {provider && <div style={s.chip(false)}>{provider.provider.toUpperCase()}</div>}
-            <button style={s.chip(false)} onClick={() => setShowKeyModal(true)}>API Key</button>
-            {clerkEnabled && <AppUserButton />}
+            <NavRight />
           </div>
         </nav>
-        {showKeyModal && <ApiKeyModal onSave={handleKeySave} />}
         <div style={{ animation: 'fadeIn 0.3s ease' }}>
           <ResearchReport ticker={currentTicker} financials={financials || {}} result={report} />
         </div>
@@ -219,159 +182,103 @@ export default function App() {
 
   return (
     <div style={s.app}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg) } } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } } @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }`}</style>
-      {showKeyModal && <ApiKeyModal onSave={handleKeySave} />}
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
 
       <nav style={s.nav}>
         <div style={s.logo}>AXIOM</div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          {provider && <div style={s.chip(true)}>{provider.provider.toUpperCase()} · {provider.model.split('/').pop()}</div>}
-          <button style={s.chip(false)} onClick={() => setShowKeyModal(true)}>Change Key</button>
-          {clerkEnabled && <AppUserButton />}
-        </div>
+        <NavRight />
       </nav>
 
-      {/* Hero */}
       <div style={{ maxWidth: 660, margin: '0 auto', padding: '88px 24px 0', textAlign: 'center' }}>
-        <div style={{
-          display: 'inline-block', fontFamily: C.mono, fontSize: 10, color: C.accent,
-          background: C.accent + '12', border: `1px solid ${C.accent}30`,
-          padding: '5px 14px', borderRadius: 20, letterSpacing: 2, marginBottom: 24,
-          textTransform: 'uppercase',
-        }}>
+        <div style={{ display: 'inline-block', fontFamily: C.mono, fontSize: 10, color: C.accent, background: C.accent + '12', border: `1px solid ${C.accent}30`, padding: '5px 14px', borderRadius: 20, letterSpacing: 2, marginBottom: 24, textTransform: 'uppercase' }}>
           Institutional Equity Research
         </div>
-        <h1 style={{
-          fontSize: 52, fontWeight: 800, color: '#fff', letterSpacing: -2.5,
-          lineHeight: 1.05, marginBottom: 16,
-        }}>
-          Research any stock<br />
-          <span style={{ color: C.accent }}>in seconds.</span>
+        <h1 style={{ fontSize: 52, fontWeight: 800, color: '#fff', letterSpacing: -2.5, lineHeight: 1.05, marginBottom: 16 }}>
+          Research any stock<br /><span style={{ color: C.accent }}>in 60 seconds.</span>
         </h1>
         <p style={{ fontSize: 17, color: C.muted2, lineHeight: 1.7, marginBottom: 44, maxWidth: 480, margin: '0 auto 44px' }}>
-          Live SEC EDGAR data. Two-pass AI analysis. Full DCF model, comps table, risk matrix — institutional-grade output, zero infrastructure cost.
+          Live SEC EDGAR data. AI-powered DCF, comps, risk matrix — institutional-grade output. {FREE_LIMIT} free reports/month.
         </p>
 
-        {/* Search form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 10, maxWidth: 440, margin: '0 auto 16px' }}>
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder="Enter ticker — AAPL, MSFT, NVDA..."
-            value={ticker}
-            onChange={e => setTicker(e.target.value.toUpperCase().replace(/[^A-Z.]/g, ''))}
-            disabled={loading}
-            style={{
-              flex: 1, background: '#111', border: `1px solid ${loading ? C.accent + '44' : C.border}`,
-              borderRadius: 8, padding: '15px 18px', color: '#e5e5e5',
-              fontFamily: C.mono, fontSize: 16, outline: 'none',
-              transition: 'border-color 0.15s',
-            }}
-          />
-          <button
-            type="submit"
-            disabled={loading || !ticker.trim() || (!provider && !isSignedIn)}
-            style={{
-              background: loading || !ticker.trim() || (!provider && !isSignedIn) ? '#1a1a1a' : C.accent,
-              color: loading || !ticker.trim() || (!provider && !isSignedIn) ? C.muted : '#000',
-              border: 'none', borderRadius: 8, padding: '15px 24px',
-              fontFamily: C.mono, fontSize: 13, fontWeight: 700,
-              cursor: loading || !ticker.trim() || (!provider && !isSignedIn) ? 'not-allowed' : 'pointer',
-              letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 8,
-              transition: 'background 0.15s',
-            }}
-          >
-            {loading ? <><Spinner /> Analyzing</> : 'Analyze →'}
-          </button>
-        </form>
-
-        {/* Progress bar */}
-        {loading && (
-          <div style={{ maxWidth: 440, margin: '0 auto 12px' }}>
-            <div style={{ height: 2, background: C.border, borderRadius: 1, overflow: 'hidden' }}>
-              <div style={{
-                height: '100%', background: C.accent, borderRadius: 1,
-                width: progressPct + '%', transition: 'width 0.5s ease',
-              }} />
+        {!isSignedIn ? (
+          <div style={{ maxWidth: 440, margin: '0 auto', background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: '32px 28px', textAlign: 'center' }}>
+            <div style={{ fontFamily: C.mono, fontSize: 13, color: C.accent, marginBottom: 8 }}>Free account required</div>
+            <div style={{ fontSize: 14, color: C.muted2, marginBottom: 24, lineHeight: 1.6 }}>
+              Sign up free — get {FREE_LIMIT} full reports per month. No credit card.
             </div>
-            <div style={{ fontFamily: C.mono, fontSize: 11, color: C.accent, marginTop: 8, animation: 'pulse 1.5s infinite' }}>
-              {progress}
+            <SignInButton mode="modal">
+              <button style={{ background: C.accent, color: '#000', border: 'none', borderRadius: 8, padding: '13px 32px', fontFamily: C.mono, fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.5 }}>
+                Sign up free →
+              </button>
+            </SignInButton>
+            <div style={{ marginTop: 16, fontFamily: C.mono, fontSize: 10, color: C.muted }}>
+              GitHub · Google · X · Email — your choice
             </div>
           </div>
-        )}
+        ) : (
+          <>
+            <form onSubmit={e => { e.preventDefault(); runAnalysis(ticker) }} style={{ display: 'flex', gap: 10, maxWidth: 440, margin: '0 auto 16px' }}>
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Enter ticker — AAPL, MSFT, NVDA..."
+                value={ticker}
+                onChange={e => setTicker(e.target.value.toUpperCase().replace(/[^A-Z.]/g, ''))}
+                disabled={loading}
+                style={{ flex: 1, background: '#111', border: `1px solid ${loading ? C.accent + '44' : C.border}`, borderRadius: 8, padding: '15px 18px', color: '#e5e5e5', fontFamily: C.mono, fontSize: 16, outline: 'none', transition: 'border-color 0.15s' }}
+              />
+              <button
+                type="submit"
+                disabled={loading || !ticker.trim() || (usage && usage.remaining === 0)}
+                style={{ background: loading || !ticker.trim() || (usage && usage.remaining === 0) ? '#1a1a1a' : C.accent, color: loading || !ticker.trim() || (usage && usage.remaining === 0) ? C.muted : '#000', border: 'none', borderRadius: 8, padding: '15px 24px', fontFamily: C.mono, fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.15s' }}
+              >
+                {loading ? <><Spinner /> Analyzing</> : 'Analyze →'}
+              </button>
+            </form>
 
-        {error && (
-          <div style={{
-            maxWidth: 440, margin: '0 auto', background: '#f8717115',
-            border: '1px solid #f8717130', borderRadius: 8, padding: '12px 16px',
-            fontFamily: C.mono, fontSize: 12, color: C.negative, textAlign: 'left',
-          }}>
-            <strong>Error:</strong> {error}
-          </div>
-        )}
+            {loading && (
+              <div style={{ maxWidth: 440, margin: '0 auto 12px' }}>
+                <div style={{ height: 2, background: C.border, borderRadius: 1, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: C.accent, borderRadius: 1, width: progressPct + '%', transition: 'width 0.5s ease' }} />
+                </div>
+                <div style={{ fontFamily: C.mono, fontSize: 11, color: C.accent, marginTop: 8, animation: 'pulse 1.5s infinite' }}>{progress}</div>
+              </div>
+            )}
 
-        {/* Popular tickers */}
-        {!loading && (
-          <div style={{ marginTop: 36 }}>
-            <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 }}>
-              Popular
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }}>
-              {POPULAR.map(t => (
-                <button
-                  key={t}
-                  onClick={() => { setTicker(t); runAnalysis(t) }}
-                  style={{
-                    fontFamily: C.mono, fontSize: 12, color: C.muted2,
-                    background: 'transparent', border: `1px solid ${C.border}`,
-                    borderRadius: 5, padding: '6px 14px', cursor: 'pointer',
-                    transition: 'border-color 0.1s, color 0.1s',
-                  }}
-                  onMouseEnter={e => { e.target.style.borderColor = C.accent + '66'; e.target.style.color = C.accent }}
-                  onMouseLeave={e => { e.target.style.borderColor = C.border; e.target.style.color = C.muted2 }}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
+            {error && (
+              <div style={{ maxWidth: 440, margin: '0 auto 12px', background: '#f8717115', border: '1px solid #f8717130', borderRadius: 8, padding: '12px 16px', fontFamily: C.mono, fontSize: 12, color: C.negative, textAlign: 'left' }}>
+                {error}
+              </div>
+            )}
+
+            {usage?.remaining === 0 && (
+              <div style={{ maxWidth: 440, margin: '0 auto', background: C.accent + '10', border: `1px solid ${C.accent}30`, borderRadius: 8, padding: '14px 16px', fontFamily: C.mono, fontSize: 12, color: C.accent, textAlign: 'center' }}>
+                Monthly limit reached — Pro plan coming soon. Resets {new Date(usage.resetAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}.
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* History */}
-      {history.length > 0 && !loading && (
+      {isSignedIn && history.length > 0 && !loading && (
         <div style={{ maxWidth: 660, margin: '60px auto 0', padding: '0 24px 80px' }}>
           <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 32 }}>
-            <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 16 }}>
-              Recent Reports
-            </div>
+            <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 16 }}>Recent Reports</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
               {history.map(h => {
                 const rec = h.report?.structured?.recommendation
                 const recColor = REC_COLOR[rec]
                 return (
-                  <button
-                    key={h.ticker}
-                    onClick={() => loadFromHistory(h)}
-                    style={{
-                      background: C.panel, border: `1px solid ${C.border}`,
-                      borderRadius: 7, padding: '14px 16px', cursor: 'pointer',
-                      textAlign: 'left', transition: 'border-color 0.15s',
-                    }}
+                  <button key={h.ticker} onClick={() => { setReport(h.report); setCurrentTicker(h.ticker); setFinancials(h.report?.financials || null) }}
+                    style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 7, padding: '14px 16px', cursor: 'pointer', textAlign: 'left', transition: 'border-color 0.15s' }}
                     onMouseEnter={e => e.currentTarget.style.borderColor = '#333'}
                     onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <span style={{ fontFamily: C.mono, fontSize: 14, fontWeight: 700, color: '#e5e5e5' }}>{h.ticker}</span>
-                      {rec && (
-                        <span style={{ fontFamily: C.mono, fontSize: 9, color: recColor, background: recColor + '15', padding: '2px 7px', borderRadius: 3 }}>
-                          {rec}
-                        </span>
-                      )}
+                      {rec && <span style={{ fontFamily: C.mono, fontSize: 9, color: recColor, background: recColor + '15', padding: '2px 7px', borderRadius: 3 }}>{rec}</span>}
                     </div>
-                    <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted }}>
-                      {new Date(h.timestamp).toLocaleDateString()}
-                    </div>
+                    <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted }}>{new Date(h.timestamp).toLocaleDateString()}</div>
                   </button>
                 )
               })}
