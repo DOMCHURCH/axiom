@@ -30,14 +30,28 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   if (!process.env.GROQ_API_KEY) return res.status(503).json({ error: 'Service temporarily unavailable.' })
+  if (!process.env.DATABASE_URL) return res.status(503).json({ error: 'Database not configured.' })
 
   const userId = await verifyClerkToken(req)
   if (!userId) {
     return res.status(401).json({ error: 'Sign in to run reports.', requiresAuth: true })
   }
 
-  await initDb()
-  const usage = await getUsage(userId)
+  try {
+    await initDb()
+  } catch (err) {
+    console.error('DB init error:', err)
+    return res.status(503).json({ error: 'Database connection failed. Please try again.' })
+  }
+
+  let usage
+  try {
+    usage = await getUsage(userId)
+  } catch (err) {
+    console.error('Usage fetch error:', err)
+    return res.status(503).json({ error: 'Could not verify usage. Please try again.' })
+  }
+
   if (usage.report_count >= FREE_LIMIT) {
     return res.status(429).json({
       error: `You've used your ${FREE_LIMIT} free reports this month. Pro plan coming soon — check back shortly.`,
