@@ -10,9 +10,10 @@ function normRate(v, fallback) {
 }
 
 // Convert bare decimals in AI prose to formatted percentages (matches web report)
+// Negative lookahead (?!%) prevents double-converting already-formatted values like "0.8%"
 function fixProse(text) {
   if (!text || typeof text !== 'string') return text
-  return text.replace(/\b(0\.\d{1,4})\b/g, (m, num) => {
+  return text.replace(/\b(0\.\d{1,4})\b(?!%)/g, (m, num) => {
     const val = parseFloat(num)
     if (val >= 0.01 && val <= 0.99) {
       const p = val * 100

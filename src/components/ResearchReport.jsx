@@ -3,15 +3,13 @@ import { altmanZScore, piotroskiFScore, dupontROE } from '../lib/scores.js'
 import { Sparkline, FootballField, ScoreGauge, Histogram } from './charts.jsx'
 
 // Convert bare decimals in AI prose to formatted percentages.
-// Matches patterns like "0.159 revenue growth" or "growth of 0.17" etc.
+// Only matches 0.01–0.99 NOT already followed by a % sign.
 function fixProse(text) {
   if (!text || typeof text !== 'string') return text
-  // Replace decimal fractions (0.01–0.99) that appear to be percentages in prose context
-  return text.replace(/\b(0\.\d{1,4})\b/g, (match, num) => {
+  return text.replace(/\b(0\.\d{1,4})\b(?!%)/g, (match, num) => {
     const val = parseFloat(num)
-    // Only convert values in [0.01, 0.99] range — these are almost always percentages in prose
     if (val >= 0.01 && val <= 0.99) {
-      const pctVal = (val * 100)
+      const pctVal = val * 100
       const formatted = pctVal % 1 === 0 ? pctVal.toFixed(0) : pctVal.toFixed(1)
       return formatted + '%'
     }
@@ -576,7 +574,7 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
             />
           </div>
 
-          <Histogram histogram={monteCarlo.histogram} current={currentPrice} median={monteCarlo.median} />
+          <Histogram histogram={monteCarlo.histogram} current={currentPrice} median={monteCarlo.median} p10={monteCarlo.p10} p90={monteCarlo.p90} />
 
           <div style={{ display: 'flex', gap: 24, marginTop: 16, flexWrap: 'wrap' }}>
             {[
