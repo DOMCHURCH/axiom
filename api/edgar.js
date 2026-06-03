@@ -70,7 +70,14 @@ export default async function handler(req, res) {
         const data = gaap[concept]?.units?.[unit]
         if (!data) continue
         const rows = data
-          .filter(d => d.form === '10-K' && d.val != null && d.end)
+          .filter(d => {
+            if (d.form !== '10-K' || d.val == null || !d.end) return false
+            if (d.start) {
+              const days = (new Date(d.end) - new Date(d.start)) / 86400000
+              if (days < 300 || days > 400) return false
+            }
+            return true
+          })
           .sort((a, b) => b.end.localeCompare(a.end))
         // Deduplicate by fiscal year end (keep first/latest filing for each end date)
         const seen = new Set()

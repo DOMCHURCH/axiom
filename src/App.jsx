@@ -4,34 +4,7 @@ import { UserButton, SignInButton, useUser, useAuth } from '@clerk/clerk-react'
 import ResearchReport from './components/ResearchReport.jsx'
 import { saveToHistory, loadHistory } from './lib/storage.js'
 import { generateResearch } from './lib/ai.js'
-
-async function exportReportPDF(ticker) {
-  const { default: html2canvas } = await import('html2canvas')
-  const { default: jsPDF } = await import('jspdf')
-  const el = document.getElementById('axiom-report')
-  if (!el) return
-  const canvas = await html2canvas(el, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: '#05080f',
-    logging: false,
-  })
-  const imgData = canvas.toDataURL('image/png')
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: 'a4' })
-  const pageW = pdf.internal.pageSize.getWidth()
-  const pageH = pdf.internal.pageSize.getHeight()
-  const imgW = canvas.width
-  const imgH = canvas.height
-  const ratio = pageW / imgW
-  const scaledH = imgH * ratio
-  let y = 0
-  while (y < scaledH) {
-    if (y > 0) pdf.addPage()
-    pdf.addImage(imgData, 'PNG', 0, -y, pageW, scaledH)
-    y += pageH
-  }
-  pdf.save(`AXIOM_${ticker}_${new Date().toISOString().slice(0, 10)}.pdf`)
-}
+import { exportReportPDF } from './lib/exportPDF.js'
 
 const T = {
   bg:      '#05080f',
