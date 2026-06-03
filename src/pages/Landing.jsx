@@ -911,6 +911,48 @@ function FinalCTA({ navigate }) {
   )
 }
 
+// ─── Trending — clickable live-report launchers ───────────────────────────────
+const TRENDING = [
+  { sym:'NVDA', name:'NVIDIA' }, { sym:'AAPL', name:'Apple' },
+  { sym:'TSLA', name:'Tesla' }, { sym:'MSFT', name:'Microsoft' },
+  { sym:'AMZN', name:'Amazon' }, { sym:'META', name:'Meta Platforms' },
+  { sym:'GOOGL', name:'Alphabet' }, { sym:'AMD', name:'Adv. Micro Devices' },
+]
+function Trending({ navigate, runDemo, loading }) {
+  const { isSignedIn } = useUser()
+  function run(sym) {
+    if (loading) return
+    if (isSignedIn) navigate(`/app?q=${sym}`)
+    else runDemo(sym)
+  }
+  return (
+    <Reveal style={{ padding:'56px 24px', borderTop:`1px solid ${T.border}`, borderBottom:`1px solid ${T.border}` }}>
+      <div style={{ maxWidth:1000, margin:'0 auto' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:22, flexWrap:'wrap', gap:10 }}>
+          <div style={{ fontFamily:T.mono, fontSize:10, color:T.text3, letterSpacing:2.5, textTransform:'uppercase' }}>Trending — run a live report in one click</div>
+          <div style={{ display:'flex', alignItems:'center', gap:6, fontFamily:T.mono, fontSize:9, color:T.text3 }}>
+            <div style={{ width:5, height:5, borderRadius:'50%', background:T.green, boxShadow:`0 0 8px ${T.green}` }} />
+            FREE · NO SIGNUP
+          </div>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }} className="trending-grid">
+          {TRENDING.map(({ sym, name })=>(
+            <button key={sym} onClick={()=>run(sym)} disabled={loading} style={{ textAlign:'left', background:'rgba(255,255,255,0.03)', border:`1px solid ${T.border}`, borderRadius:12, padding:'16px 18px', cursor:loading?'wait':'pointer', transition:`all 0.2s ${EASE}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}
+              onMouseEnter={e=>{ if(!loading){ e.currentTarget.style.borderColor='rgba(124,58,237,0.45)'; e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.background='rgba(124,58,237,0.06)' } }}
+              onMouseLeave={e=>{ e.currentTarget.style.borderColor=T.border; e.currentTarget.style.transform='none'; e.currentTarget.style.background='rgba(255,255,255,0.03)' }}>
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontFamily:T.mono, fontSize:14, fontWeight:700, color:T.text, letterSpacing:0.5 }}>{sym}</div>
+                <div style={{ fontFamily:T.sans, fontSize:11, color:T.text3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
+              </div>
+              <span style={{ fontFamily:T.mono, fontSize:14, color:'rgba(167,139,250,0.7)', flexShrink:0 }}>→</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </Reveal>
+  )
+}
+
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function Footer() {
   return (
@@ -976,6 +1018,7 @@ export default function Landing() {
         .steps-grid { grid-template-columns: 1fr 1fr !important; }
         .usecases-grid { grid-template-columns: 1fr 1fr !important; }
         .stats-grid { grid-template-columns: 1fr 1fr !important; }
+        .trending-grid { grid-template-columns: 1fr 1fr !important; }
         .stat-cell { border-right: none !important; }
         .stat-cell:nth-child(odd) { border-right: 1px solid rgba(255,255,255,0.07) !important; }
         .nav-links { display: none !important; }
@@ -1056,6 +1099,7 @@ export default function Landing() {
       <Nav navigate={navigate} />
       <Hero navigate={navigate} runDemo={runDemo} ticker={ticker} setTicker={setTicker} loading={loading} progress={progress} progressPct={progressPct} error={error} />
       <TickerStrip />
+      <Trending navigate={navigate} runDemo={runDemo} loading={loading} />
       <SocialProof />
       <Stats />
       <Features />
