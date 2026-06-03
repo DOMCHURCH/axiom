@@ -217,7 +217,7 @@ export default function App() {
       {/* Top bar */}
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: 52, borderBottom: `1px solid ${T.border}`, background: T.bg2, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ fontFamily: T.mono, fontSize: 14, fontWeight: 700, color: T.accent, letterSpacing: 3 }}>AXIOM</div>
+          <div onClick={() => navigate('/')} style={{ fontFamily: T.mono, fontSize: 14, fontWeight: 700, color: T.accent, letterSpacing: 3, cursor: 'pointer' }}>AXIOM</div>
           <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, background: T.bg3, border: `1px solid ${T.border}`, borderRadius: 4, padding: '3px 8px', letterSpacing: 1 }}>EQUITY RESEARCH</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
