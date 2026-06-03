@@ -283,23 +283,32 @@ export default function App() {
 
         {!isSignedIn ? (
           /* Sign-in gate */
-          <div style={{ textAlign: 'center', maxWidth: 420, position: 'relative', zIndex: 1 }}>
+          <div style={{ textAlign: 'center', maxWidth: 440, position: 'relative', zIndex: 1 }}>
             <div style={{ fontFamily: T.mono, fontSize: 44, fontWeight: 700, color: T.accent, letterSpacing: 6, marginBottom: 8, textShadow: '0 0 40px #0ea5e930' }}>AXIOM</div>
             <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 28 }}>Institutional Equity Research</div>
-            <div style={{ fontSize: 15, color: T.text2, lineHeight: 1.75, marginBottom: 10, fontFamily: T.sans }}>
-              Institutional equity research on any US stock in under 60 seconds.
+            <div style={{ fontSize: 22, color: T.text, lineHeight: 1.4, marginBottom: 14, fontFamily: T.sans, fontWeight: 700, letterSpacing: '-0.02em' }}>
+              Know if any stock is a Buy<br />or a Sell — in 60 seconds.
             </div>
-            <div style={{ fontFamily: T.mono, fontSize: 12, color: T.muted, marginBottom: 36 }}>2 free reports/month · No credit card</div>
+            <div style={{ fontSize: 14, color: T.text2, lineHeight: 1.7, marginBottom: 24, fontFamily: T.sans }}>
+              A full research report on any US stock: DCF valuation, Monte Carlo, comps, risks, and a clear recommendation — built from live SEC filings.
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 18, flexWrap: 'wrap', marginBottom: 30 }}>
+              {['Free — no credit card', 'No API keys', 'Real SEC data'].map(t => (
+                <span key={t} style={{ fontFamily: T.mono, fontSize: 10, color: T.muted2, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ color: T.green }}>✓</span>{t}
+                </span>
+              ))}
+            </div>
             <SignInButton mode="modal">
               <button
-                style={{ background: 'linear-gradient(135deg, #0ea5e9, #38bdf8)', color: '#000', border: 'none', borderRadius: 10, padding: '14px 40px', fontFamily: T.mono, fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.3, marginBottom: 14, boxShadow: '0 4px 20px #0ea5e930', transition: 'all 0.15s cubic-bezier(0.4,0,0.2,1)' }}
+                style={{ background: 'linear-gradient(135deg, #0ea5e9, #38bdf8)', color: '#000', border: 'none', borderRadius: 10, padding: '15px 44px', fontFamily: T.mono, fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.3, marginBottom: 14, boxShadow: '0 4px 20px #0ea5e930', transition: 'all 0.15s cubic-bezier(0.4,0,0.2,1)' }}
                 onMouseEnter={e => { e.target.style.transform = 'scale(1.02)'; e.target.style.boxShadow = '0 6px 28px #0ea5e950' }}
                 onMouseLeave={e => { e.target.style.transform = 'scale(1)'; e.target.style.boxShadow = '0 4px 20px #0ea5e930' }}
               >
-                Sign up free →
+                Create free account →
               </button>
             </SignInButton>
-            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>Google · GitHub · X · Email</div>
+            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>Continue with Google · GitHub · X · Email</div>
           </div>
         ) : (
           <div style={{ width: '100%', maxWidth: 560, position: 'relative', zIndex: 1 }}>

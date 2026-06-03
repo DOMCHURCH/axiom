@@ -385,14 +385,14 @@ function Hero({ navigate, runDemo, ticker, setTicker, loading, progress, progres
 
           {/* Headline */}
           <h1 style={{ fontFamily:T.sans, fontSize:'clamp(36px,3.8vw,64px)', fontWeight:900, letterSpacing:'-0.04em', lineHeight:1.05, margin:'0 0 20px', color:T.text }}>
-            Institutional<br />
-            <GradientText>equity research</GradientText><br />
+            Know if a stock is<br />
+            <GradientText>a Buy or a Sell</GradientText><br />
             in 60 seconds.
           </h1>
 
           {/* Subtext */}
-          <p style={{ fontFamily:T.sans, fontSize:15, color:T.text2, lineHeight:1.8, margin:'0 0 32px', maxWidth:440 }}>
-            Full DCF models, Monte Carlo simulation, comps tables, risk matrices, and BUY/HOLD/SELL — powered by live SEC EDGAR filings.
+          <p style={{ fontFamily:T.sans, fontSize:15, color:T.text2, lineHeight:1.8, margin:'0 0 32px', maxWidth:448 }}>
+            AXIOM turns live SEC filings into a full Wall-Street-grade research report — DCF valuation, Monte Carlo, comps, risk matrix, and a clear <strong style={{ color:T.text, fontWeight:600 }}>BUY / HOLD / SELL</strong>. No spreadsheets. No signup to try.
           </p>
 
           {/* Search bar */}
@@ -402,7 +402,7 @@ function Hero({ navigate, runDemo, ticker, setTicker, loading, progress, progres
               <input ref={inputRef} type="text" placeholder="Ticker symbol — AAPL, NVDA, MSFT..." value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase().replace(/[^A-Z.]/g,''))} disabled={loading} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
                 style={{ flex:1, background:'transparent', border:'none', padding:'15px 14px', color:T.text, fontFamily:T.mono, fontSize:13, outline:'none', minWidth:0 }} />
               <button type="submit" disabled={loading||!ticker.trim()} style={{ flexShrink:0, background: loading||!ticker.trim() ? 'transparent' : T.grad, color: loading||!ticker.trim() ? T.text3 : '#fff', border:'none', borderLeft:`1px solid rgba(255,255,255,0.07)`, padding:'0 20px', fontFamily:T.mono, fontSize:11, fontWeight:700, cursor: loading||!ticker.trim() ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', gap:7, transition:'all 0.15s', whiteSpace:'nowrap', letterSpacing:0.5 }}>
-                {loading ? <><Spinner />Running...</> : isSignedIn ? 'Analyze →' : 'Preview →'}
+                {loading ? <><Spinner />Running...</> : isSignedIn ? 'Analyze →' : 'Run free →'}
               </button>
             </div>
           </form>
@@ -430,7 +430,7 @@ function Hero({ navigate, runDemo, ticker, setTicker, loading, progress, progres
 
           {/* Trust row */}
           <div style={{ display:'flex', gap:18, flexWrap:'wrap' }}>
-            {['Free preview — no signup','No API keys','Real SEC data'].map(t=>(
+            {['Free to try — no signup','No credit card','Real SEC filings'].map(t=>(
               <span key={t} style={{ fontFamily:T.mono, fontSize:10, color:T.text3, display:'flex', alignItems:'center', gap:5 }}>
                 <span style={{ color:T.green, fontSize:11 }}>✓</span>{t}
               </span>
@@ -452,7 +452,8 @@ function SocialProof() {
   return (
     <Reveal style={{ padding:'56px 24px', borderTop:`1px solid ${T.border}`, borderBottom:`1px solid ${T.border}`, textAlign:'center' }}>
       <div style={{ maxWidth:900, margin:'0 auto' }}>
-        <div style={{ fontFamily:T.mono, fontSize:9, color:T.text3, letterSpacing:2.5, textTransform:'uppercase', marginBottom:28 }}>Trusted data sources & infrastructure</div>
+        <div style={{ fontFamily:T.mono, fontSize:9, color:T.text3, letterSpacing:2.5, textTransform:'uppercase', marginBottom:10 }}>No black box — every number is traceable to its source</div>
+        <div style={{ fontFamily:T.sans, fontSize:13, color:T.text2, marginBottom:28, maxWidth:520, margin:'0 auto 28px', lineHeight:1.6 }}>AXIOM doesn't make up numbers. It pulls official SEC filings and shows its work — the same primary data professional analysts use.</div>
         <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:0, flexWrap:'wrap' }}>
           {[
             { name:'SEC EDGAR', desc:'Official XBRL filings' },
@@ -778,16 +779,16 @@ function Pricing({ navigate }) {
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }} className="pricing-grid">
           {/* Free */}
           <Reveal delay={0} style={{ background:'rgba(255,255,255,0.03)', backdropFilter:'blur(20px)', border:`1px solid ${T.border}`, borderRadius:22, padding:'44px 40px', transition:'border-color 0.2s, box-shadow 0.2s' }} onMouseEnter={e=>{e.currentTarget.style.borderColor=T.border2;e.currentTarget.style.boxShadow='0 20px 60px rgba(0,0,0,0.3)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.boxShadow='none'}}>
-            <div style={{ fontFamily:T.mono, fontSize:10, color:T.text3, textTransform:'uppercase', letterSpacing:2, marginBottom:16 }}>Free</div>
+            <div style={{ fontFamily:T.mono, fontSize:10, color:T.text3, textTransform:'uppercase', letterSpacing:2, marginBottom:16 }}>Free account</div>
             <div style={{ fontFamily:T.mono, fontSize:60, fontWeight:800, color:T.text, lineHeight:1, marginBottom:6 }}>$0</div>
-            <div style={{ fontSize:13, color:T.text2, marginBottom:36, lineHeight:1.65 }}>2 reports per month. No credit card, no API keys.</div>
-            {['2 reports / month','Full DCF + Monte Carlo','Altman Z-Score + Piotroski F','Comps table + risk matrix','BUY / HOLD / SELL recommendation'].map(f=>(
+            <div style={{ fontSize:13, color:T.text2, marginBottom:36, lineHeight:1.65 }}>Your research workspace. Save reports, revisit anytime — no card, no API keys.</div>
+            {['Save & revisit your reports','Full DCF + Monte Carlo valuation','Altman Z-Score + Piotroski F quality','Comps table + 5-category risk matrix','BUY / HOLD / SELL + price target','Nothing paywalled — every section included'].map(f=>(
               <div key={f} style={{ display:'flex', gap:10, marginBottom:12, fontSize:13, color:T.text2 }}>
                 <span style={{ color:T.green, flexShrink:0 }}>✓</span> {f}
               </div>
             ))}
             <SignUpButton mode="modal">
-              <button style={{ display:'block', width:'100%', marginTop:36, background:'transparent', color:T.text, border:`1px solid ${T.border2}`, borderRadius:10, padding:'15px 0', fontFamily:T.mono, fontSize:13, fontWeight:700, cursor:'pointer', transition:'all 0.15s', letterSpacing:0.3 }} onMouseEnter={e=>{e.target.style.borderColor='rgba(124,58,237,0.5)';e.target.style.color='rgba(255,255,255,0.9)'}} onMouseLeave={e=>{e.target.style.borderColor=T.border2;e.target.style.color=T.text}}>Get started free →</button>
+              <button style={{ display:'block', width:'100%', marginTop:36, background:'transparent', color:T.text, border:`1px solid ${T.border2}`, borderRadius:10, padding:'15px 0', fontFamily:T.mono, fontSize:13, fontWeight:700, cursor:'pointer', transition:'all 0.15s', letterSpacing:0.3 }} onMouseEnter={e=>{e.target.style.borderColor='rgba(124,58,237,0.5)';e.target.style.color='rgba(255,255,255,0.9)'}} onMouseLeave={e=>{e.target.style.borderColor=T.border2;e.target.style.color=T.text}}>Create free account →</button>
             </SignUpButton>
           </Reveal>
 
@@ -830,8 +831,8 @@ const FAQS = [
   { q:'How accurate are the reports?', a:'AXIOM sources all financial data directly from SEC EDGAR\'s XBRL database — the same data Bloomberg uses. The AI analysis is built entirely on that data. Use reports as a starting point, not a final investment decision.' },
   { q:'Which stocks does AXIOM cover?', a:'Any US-listed company that files with the SEC — NYSE, NASDAQ, and OTC. All S&P 500 companies, mid-caps, and most small-caps with XBRL-formatted filings.' },
   { q:'How is AXIOM different from a screener?', a:'Screeners give tables of numbers. AXIOM produces a full written research note — DCF model, comparable company analysis, risk matrix, and an investment recommendation — the same output a junior analyst spends hours on.' },
-  { q:'Do I need my own AI API key?', a:'No. AXIOM runs entirely on our infrastructure. Sign up and generate reports immediately — no keys, no configuration, no setup.' },
-  { q:'What does the free plan include?', a:'2 complete, full-length equity research reports per month. Every section included: DCF, Monte Carlo, comps, risk matrix, analyst note. Nothing is paywalled on the free tier.' },
+  { q:'Do I need my own AI API key?', a:'No. AXIOM runs entirely on our infrastructure. Create a free account and generate reports immediately — no keys, no configuration, no setup.' },
+  { q:'Is it really free? What\'s the catch?', a:'No catch. You can generate a full report right now with no signup. Creating a free account lets you save your reports, revisit them anytime, and build a research library — every section is included, nothing is paywalled on the free tier.' },
   { q:'When is Pro launching?', a:'Soon. Pro will offer unlimited reports, cloud history, shareable links, and priority AI models. Join the waitlist above to get early access.' },
 ]
 function FAQ() {
@@ -1012,11 +1013,23 @@ export default function Landing() {
     return (
       <div style={{ minHeight:'100vh', background:T.bg, color:T.text }}>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}`}</style>
-        <div style={{ background:'rgba(124,58,237,0.08)', borderBottom:'1px solid rgba(124,58,237,0.2)', padding:'10px 24px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-          <div style={{ fontFamily:T.mono, fontSize:11, color:'rgba(167,139,250,0.9)' }}>Demo preview · 1 free/day · <span style={{ color:T.text3 }}>Sign up for 2 full reports/month</span></div>
-          <div style={{ display:'flex', gap:8 }}>
-            <button onClick={()=>{ setReport(null); setTicker('') }} style={{ fontFamily:T.mono, fontSize:11, color:T.text2, background:'transparent', border:`1px solid ${T.border}`, borderRadius:6, padding:'6px 14px', cursor:'pointer' }}>← Back</button>
-            <button onClick={()=>navigate('/app')} style={{ fontFamily:T.mono, fontSize:11, color:'#fff', background:T.grad, border:'none', borderRadius:6, padding:'6px 18px', cursor:'pointer', fontWeight:700 }}>Sign up free →</button>
+        <div style={{ position:'sticky', top:0, zIndex:100, background:'rgba(13,5,32,0.92)', backdropFilter:'blur(16px) saturate(160%)', borderBottom:'1px solid rgba(124,58,237,0.25)', padding:'12px 24px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:9 }}>
+            <span style={{ fontSize:15 }}>✨</span>
+            <div style={{ fontFamily:T.sans, fontSize:13, color:T.text, fontWeight:600 }}>
+              This is a real {currentTicker} report.
+              <span style={{ color:'rgba(167,139,250,0.95)', fontWeight:500 }}> Create a free account to save it, export to PDF & build your library.</span>
+            </div>
+          </div>
+          <div style={{ display:'flex', gap:8, flexShrink:0 }}>
+            <button onClick={()=>{ setReport(null); setTicker('') }} style={{ fontFamily:T.mono, fontSize:11, color:T.text2, background:'transparent', border:`1px solid ${T.border}`, borderRadius:6, padding:'7px 14px', cursor:'pointer' }}>← Back</button>
+            {clerkEnabled ? (
+              <SignUpButton mode="modal">
+                <button style={{ fontFamily:T.mono, fontSize:11, color:'#fff', background:T.grad, border:'none', borderRadius:6, padding:'7px 18px', cursor:'pointer', fontWeight:700, boxShadow:'0 2px 14px rgba(124,58,237,0.4)' }}>Save this report — free →</button>
+              </SignUpButton>
+            ) : (
+              <button onClick={()=>navigate('/app')} style={{ fontFamily:T.mono, fontSize:11, color:'#fff', background:T.grad, border:'none', borderRadius:6, padding:'7px 18px', cursor:'pointer', fontWeight:700, boxShadow:'0 2px 14px rgba(124,58,237,0.4)' }}>Save this report — free →</button>
+            )}
           </div>
         </div>
         <div style={{ animation:'fadeIn 0.3s ease' }}>
