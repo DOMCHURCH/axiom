@@ -28,22 +28,79 @@ const T = {
 
 const clerkEnabled = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
-function useInView(threshold = 0.1) {
+function useInView(threshold = 0.1, once = true) {
   const ref = useRef(null)
   const [inView, setInView] = useState(false)
   useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setInView(true); obs.disconnect() } }, { threshold })
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { setInView(true); if (once) obs.disconnect() }
+      else if (!once) setInView(false)
+    }, { threshold })
     if (ref.current) obs.observe(ref.current)
     return () => obs.disconnect()
   }, [])
   return [ref, inView]
 }
 
-function Reveal({ children, delay = 0, y = 28, style, ...props }) {
-  const [ref, inView] = useInView(0.08)
+// Apple-style scroll-linked progress (0 = element entering, 1 = element leaving top)
+function useScrollProgress() {
+  const ref = useRef(null)
+  const [p, setP] = useState(0)
+  useEffect(() => {
+    let raf = 0
+    const onScroll = () => {
+      raf = requestAnimationFrame(() => {
+        const el = ref.current
+        if (!el) return
+        const r = el.getBoundingClientRect()
+        const vh = window.innerHeight
+        // 0 when top of el hits bottom of viewport, 1 when bottom of el hits top
+        const total = r.height + vh
+        const seen = vh - r.top
+        setP(Math.max(0, Math.min(1, seen / total)))
+      })
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll) }
+  }, [])
+  return [ref, p]
+}
+
+const EASE = 'cubic-bezier(0.16,1,0.3,1)'
+
+function Reveal({ children, delay = 0, y = 32, blur = true, scale = false, style, ...props }) {
+  const [ref, inView] = useInView(0.12)
   return (
-    <div ref={ref} style={{ opacity: inView ? 1 : 0, transform: inView ? 'none' : `translateY(${y}px)`, transition: `opacity 0.7s ease ${delay}s, transform 0.7s cubic-bezier(0.16,1,0.3,1) ${delay}s`, ...style }} {...props}>
+    <div ref={ref} style={{
+      opacity: inView ? 1 : 0,
+      transform: inView ? 'none' : `translateY(${y}px)${scale ? ' scale(0.96)' : ''}`,
+      filter: blur ? (inView ? 'blur(0)' : 'blur(8px)') : 'none',
+      transition: `opacity 0.9s ${EASE} ${delay}s, transform 1s ${EASE} ${delay}s, filter 0.9s ${EASE} ${delay}s`,
+      willChange: 'opacity, transform, filter',
+      ...style,
+    }} {...props}>
       {children}
+    </div>
+  )
+}
+
+// Stagger children one-by-one as the container scrolls in
+function Stagger({ children, step = 0.08, y = 28, style, className }) {
+  const [ref, inView] = useInView(0.12)
+  const arr = Array.isArray(children) ? children : [children]
+  return (
+    <div ref={ref} style={style} className={className}>
+      {arr.map((child, i) => (
+        <div key={i} style={{
+          opacity: inView ? 1 : 0,
+          transform: inView ? 'none' : `translateY(${y}px) scale(0.97)`,
+          filter: inView ? 'blur(0)' : 'blur(6px)',
+          transition: `opacity 0.8s ${EASE} ${i * step}s, transform 0.9s ${EASE} ${i * step}s, filter 0.8s ${EASE} ${i * step}s`,
+          willChange: 'opacity, transform',
+        }}>{child}</div>
+      ))}
     </div>
   )
 }
@@ -239,6 +296,13 @@ function Hero({ navigate, runDemo, ticker, setTicker, loading, progress, progres
   const inputRef = useRef(null)
   const { isSignedIn } = useUser()
   const [focused, setFocused] = useState(false)
+  const [heroP, setHeroP] = useState(0)
+  useEffect(() => {
+    let raf = 0
+    const onScroll = () => { raf = requestAnimationFrame(() => setHeroP(Math.min(1, window.scrollY / window.innerHeight))) }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('scroll', onScroll) }
+  }, [])
   const POPULAR = ['AAPL','MSFT','NVDA','GOOGL','META','TSLA']
 
   function handleGenerate(t) {
@@ -330,8 +394,8 @@ function Hero({ navigate, runDemo, ticker, setTicker, loading, progress, progres
           </div>
         </div>
 
-        {/* ── Right: mockup ── */}
-        <div style={{ animation:'fadeUp 0.65s ease 0.18s both', minWidth:0 }}>
+        {/* ── Right: mockup with parallax ── */}
+        <div style={{ animation:'fadeUp 0.65s ease 0.18s both', minWidth:0, transform:`translateY(${heroP * -60}px)`, willChange:'transform' }}>
           <ReportMockup />
         </div>
       </div>
@@ -495,19 +559,62 @@ function ForSection() {
           <div style={{ fontFamily:T.mono, fontSize:10, letterSpacing:2, textTransform:'uppercase', marginBottom:12, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>Who uses AXIOM</div>
           <h2 style={{ fontFamily:T.sans, fontSize:'clamp(28px,5vw,52px)', fontWeight:900, color:T.text, letterSpacing:'-0.04em', margin:0, lineHeight:1 }}>Built for anyone who takes<br />stocks seriously.</h2>
         </Reveal>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }} className="usecases-grid">
+        <Stagger step={0.1} style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }} className="usecases-grid">
           {cards.map((c,i)=>(
-            <Reveal key={i} delay={i*0.07} style={{ background:'rgba(255,255,255,0.03)', border:`1px solid ${T.border}`, borderRadius:18, overflow:'hidden', transition:'all 0.25s ease' }} onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(124,58,237,0.35)';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 20px 60px rgba(0,0,0,0.3)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none'}}>
-              <div style={{ height:160, overflow:'hidden', position:'relative' }}>
-                <img src={c.img} alt={c.role} style={{ width:'100%', height:'100%', objectFit:'cover', transition:'transform 0.4s ease' }} onMouseEnter={e=>e.target.style.transform='scale(1.05)'} onMouseLeave={e=>e.target.style.transform='none'} />
-                <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom, transparent 40%, rgba(4,4,10,0.9))' }} />
+            <div key={i} className="lift-card" style={{ background:'rgba(255,255,255,0.03)', border:`1px solid ${T.border}`, borderRadius:18, overflow:'hidden', transition:`all 0.4s ${EASE}` }}>
+              <div style={{ height:170, overflow:'hidden', position:'relative' }}>
+                <img src={c.img} alt={c.role} className="lift-img" style={{ width:'100%', height:'100%', objectFit:'cover', transition:`transform 0.6s ${EASE}` }} />
+                <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom, transparent 35%, rgba(4,4,10,0.92))' }} />
+                <div style={{ position:'absolute', bottom:14, left:18, fontFamily:T.sans, fontSize:15, fontWeight:700, color:'#fff' }}>{c.role}</div>
               </div>
-              <div style={{ padding:'20px 22px 24px' }}>
-                <div style={{ fontFamily:T.sans, fontSize:15, fontWeight:700, color:T.text, marginBottom:8 }}>{c.role}</div>
+              <div style={{ padding:'18px 20px 22px' }}>
                 <div style={{ fontSize:12, color:T.text2, lineHeight:1.75 }}>{c.desc}</div>
               </div>
-            </Reveal>
+            </div>
           ))}
+        </Stagger>
+      </div>
+    </section>
+  )
+}
+
+// ─── Apple-style scroll-scrub showcase ────────────────────────────────────────
+function Showcase() {
+  const [ref, p] = useScrollProgress()
+  // p: 0 (entering) → 1 (leaving). Use 0.1–0.6 window for the scrub.
+  const t = Math.max(0, Math.min(1, (p - 0.1) / 0.45))
+  const scale = 0.82 + t * 0.18           // 0.82 → 1.0
+  const opacity = 0.35 + t * 0.65          // dim → bright
+  const radius = 32 - t * 18               // rounded → flatter
+  const translateY = (1 - t) * 40
+  const captionOpacity = Math.max(0, Math.min(1, (p - 0.35) / 0.2))
+
+  return (
+    <section ref={ref} style={{ position:'relative', height:'200vh', borderTop:`1px solid ${T.border}` }}>
+      <div style={{ position:'sticky', top:0, height:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+        {/* Ambient glow that intensifies */}
+        <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:1000, height:700, borderRadius:'50%', background:`radial-gradient(ellipse, rgba(124,58,237,${0.06 + t*0.14}) 0%, transparent 70%)`, pointerEvents:'none', transition:'background 0.1s linear' }} />
+
+        <div style={{ position:'relative', zIndex:2, textAlign:'center', marginBottom:40, opacity: Math.max(0, 1 - t*1.4), transform:`translateY(${-t*30}px)`, pointerEvents:'none' }}>
+          <div style={{ fontFamily:T.mono, fontSize:11, letterSpacing:2.5, textTransform:'uppercase', marginBottom:14, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>The full report</div>
+          <h2 style={{ fontFamily:T.sans, fontSize:'clamp(36px,6vw,76px)', fontWeight:900, color:T.text, letterSpacing:'-0.05em', margin:0, lineHeight:0.95 }}>Every number.<br />Beautifully rendered.</h2>
+        </div>
+
+        {/* The scaling hero image */}
+        <div style={{ position:'relative', zIndex:1, width:'min(1000px, 92vw)', transform:`scale(${scale}) translateY(${translateY}px)`, opacity, borderRadius:radius, overflow:'hidden', boxShadow:`0 ${40+t*60}px ${100+t*80}px rgba(0,0,0,0.7), 0 0 ${t*120}px rgba(124,58,237,${t*0.25})`, border:'1px solid rgba(255,255,255,0.1)', willChange:'transform, opacity' }}>
+          <img src="https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=1400&h=820&fit=crop&q=85" alt="Financial dashboard" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+          <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(124,58,237,0.18), rgba(6,182,212,0.1))' }} />
+          {/* Caption overlay reveals near the end */}
+          <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'48px 40px 36px', background:'linear-gradient(to top, rgba(4,4,10,0.92), transparent)', opacity:captionOpacity, transform:`translateY(${(1-captionOpacity)*20}px)`, transition:'opacity 0.1s linear' }}>
+            <div style={{ display:'flex', gap:40, flexWrap:'wrap', justifyContent:'center' }}>
+              {[['DCF + Monte Carlo','2,000 simulations'],['Live SEC EDGAR','Real XBRL data'],['Risk matrix','5-category scoring'],['60-second output','Ready to share']].map(([a,b])=>(
+                <div key={a} style={{ textAlign:'center' }}>
+                  <div style={{ fontFamily:T.sans, fontSize:15, fontWeight:700, color:'#fff', marginBottom:4 }}>{a}</div>
+                  <div style={{ fontFamily:T.mono, fontSize:10, color:'rgba(255,255,255,0.6)' }}>{b}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -793,6 +900,11 @@ export default function Landing() {
       @keyframes fadeUp { from { opacity: 0; transform: translateY(28px) } to { opacity: 1; transform: translateY(0) } }
       @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
       @keyframes orbFloat { 0%,100% { transform: translate(0,0) } 33% { transform: translate(30px,-20px) } 66% { transform: translate(-20px,15px) } }
+      .lift-card:hover { border-color: rgba(124,58,237,0.4) !important; transform: translateY(-6px); box-shadow: 0 24px 60px rgba(0,0,0,0.4), 0 0 40px rgba(124,58,237,0.1); }
+      .lift-card:hover .lift-img { transform: scale(1.08); }
+      .feat-card { transition: all 0.4s cubic-bezier(0.16,1,0.3,1); }
+      .feat-card:hover { transform: translateY(-5px); border-color: rgba(124,58,237,0.35) !important; box-shadow: 0 20px 50px rgba(0,0,0,0.35); }
+      html { scroll-behavior: smooth; }
       @media (max-width: 1024px) {
         .hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; padding: 48px 24px 60px !important; }
         .demo-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
@@ -872,6 +984,7 @@ export default function Landing() {
       <Stats />
       <Features />
       <ForSection />
+      <Showcase />
       <HowItWorks />
       <DemoSection />
       <Pricing navigate={navigate} />
