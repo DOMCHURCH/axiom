@@ -2,6 +2,23 @@ import { fmt, fmtDollar, pct, pctSigned, fmtMultiple, runDCF, dcfSensitivity, mo
 import { altmanZScore, piotroskiFScore, dupontROE } from '../lib/scores.js'
 import { Sparkline, FootballField, ScoreGauge, Histogram } from './charts.jsx'
 
+// Convert bare decimals in AI prose to formatted percentages.
+// Matches patterns like "0.159 revenue growth" or "growth of 0.17" etc.
+function fixProse(text) {
+  if (!text || typeof text !== 'string') return text
+  // Replace decimal fractions (0.01–0.99) that appear to be percentages in prose context
+  return text.replace(/\b(0\.\d{1,4})\b/g, (match, num) => {
+    const val = parseFloat(num)
+    // Only convert values in [0.01, 0.99] range — these are almost always percentages in prose
+    if (val >= 0.01 && val <= 0.99) {
+      const pctVal = (val * 100)
+      const formatted = pctVal % 1 === 0 ? pctVal.toFixed(0) : pctVal.toFixed(1)
+      return formatted + '%'
+    }
+    return match
+  })
+}
+
 const C = {
   bg: '#0a0a0a',
   panel: '#111',
@@ -286,12 +303,12 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
       {/* ── EXECUTIVE SUMMARY ── */}
       <Panel style={{ marginBottom: 16 }}>
         <SectionHeader>Executive Summary</SectionHeader>
-        <p style={{ ...s.body, fontSize: 15, color: '#c9d1d9', lineHeight: 1.8 }}>{d.executiveSummary}</p>
+        <p style={{ ...s.body, fontSize: 15, color: '#c9d1d9', lineHeight: 1.8 }}>{fixProse(d.executiveSummary)}</p>
         {d.investmentThesis && (
           <>
             <Divider />
             <Label>Investment Thesis</Label>
-            <p style={{ ...s.body, marginTop: 4 }}>{d.investmentThesis}</p>
+            <p style={{ ...s.body, marginTop: 4 }}>{fixProse(d.investmentThesis)}</p>
           </>
         )}
       </Panel>
@@ -329,7 +346,7 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
             ].map(([k, v]) => v ? (
               <div key={k}>
                 <Label>{k}</Label>
-                <p style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.65, margin: 0 }}>{v}</p>
+                <p style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.65, margin: 0 }}>{fixProse(v)}</p>
               </div>
             ) : null)}
           </div>
@@ -360,7 +377,7 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
             {(d.bullCase || []).map((pt, i) => (
               <li key={i} style={s.li}>
                 <span style={s.dot(C.positive)} />
-                {pt}
+                {fixProse(pt)}
               </li>
             ))}
           </ul>
@@ -371,7 +388,7 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
             {(d.bearCase || []).map((pt, i) => (
               <li key={i} style={s.li}>
                 <span style={s.dot(C.negative)} />
-                {pt}
+                {fixProse(pt)}
               </li>
             ))}
           </ul>
@@ -389,7 +406,7 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
                 borderRadius: 6, padding: '8px 16px', fontSize: 13, color: '#9ca3af',
                 borderLeft: `2px solid ${C.accent}`,
               }}>
-                {c}
+                {fixProse(c)}
               </div>
             ))}
           </div>
@@ -427,6 +444,13 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
       {dcf && (
         <Panel style={{ marginBottom: 16 }}>
           <SectionHeader>DCF Valuation Model</SectionHeader>
+
+          {currentPrice && dcf.intrinsicValue && dcf.intrinsicValue < currentPrice * 0.75 && (
+            <div style={{ background: '#f59e0b0d', border: '1px solid #f59e0b22', borderLeft: '3px solid #f59e0b', borderRadius: 6, padding: '10px 16px', marginBottom: 16, fontSize: 12, color: '#9ca3af', lineHeight: 1.6 }}>
+              <span style={{ color: '#f59e0b', fontWeight: 600 }}>Note: </span>
+              DCF intrinsic value (${dcf.intrinsicValue.toFixed(0)}) is below the market price (${currentPrice.toFixed(0)}), which is typical for high-growth, high-multiple stocks where the market prices in long-duration growth beyond this model's {8}-year horizon. The 12-month target (${d.targetPrice}) reflects comps-based and growth-adjusted valuation.
+            </div>
+          )}
 
           <div style={{ ...s.grid4, marginBottom: 20 }}>
             <Metric label="Intrinsic Value / Share" value={dcf.intrinsicValue ? '$' + dcf.intrinsicValue.toFixed(2) : 'N/A'} color={C.accent} large />
@@ -643,7 +667,7 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
                   )}
                   <div style={{ fontWeight: 600, fontSize: 13, color: '#e5e5e5', whiteSpace: 'nowrap' }}>{risk.title}</div>
                 </div>
-                <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>{risk.description}</div>
+                <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>{fixProse(risk.description)}</div>
               </div>
             ))}
           </div>
@@ -762,7 +786,7 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
         }}>
           <Label style={{ color: recColor, marginBottom: 10 }}>Analyst Conviction</Label>
           <p style={{ fontSize: 15, color: '#c9d1d9', lineHeight: 1.8, margin: 0, fontStyle: 'italic' }}>
-            {d.analystNote}
+            {fixProse(d.analystNote)}
           </p>
         </div>
       )}
