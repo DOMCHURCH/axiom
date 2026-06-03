@@ -36,7 +36,7 @@ export default function ReportPage() {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           {report && (
-            <button onClick={() => exportReportPDF(report.ticker, report.result, {})} style={{
+            <button onClick={() => exportReportPDF(report.ticker, report.result, report.result?.financials || {})} style={{
               color: T.accent, fontSize: 13, background: T.accent + '12',
               fontFamily: T.mono, padding: '6px 14px', cursor: 'pointer',
               border: `1px solid ${T.accent}40`, borderRadius: 4,
@@ -73,7 +73,7 @@ export default function ReportPage() {
               Generated {new Date(report.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
             </div>
             <div id="axiom-report">
-              <ResearchReport data={report.result} ticker={report.ticker} />
+              <ResearchReport result={report.result} ticker={report.ticker} financials={report.result?.financials || {}} />
             </div>
           </>
         )}

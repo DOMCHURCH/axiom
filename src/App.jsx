@@ -129,7 +129,7 @@ export default function App() {
       getToken().then(token => {
         const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
         // Save to cloud history and capture ID for sharing
-        fetch('/api/reports', { method: 'POST', headers, body: JSON.stringify({ ticker: sym, result }) })
+        fetch('/api/reports', { method: 'POST', headers, body: JSON.stringify({ ticker: sym, result: { ...result, financials: edgarData.financials } }) })
           .then(r => r.json()).then(d => { if (d.id) setReportId(d.id) }).catch(() => {})
         // Refresh usage
         fetch('/api/usage', { headers }).then(r => r.json()).then(setUsage).catch(() => {})
@@ -196,7 +196,7 @@ export default function App() {
             )}
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {usage?.isAdmin && reportId && (
+            {reportId && (
               <button className="axiom-btn" onClick={() => {
                 navigator.clipboard.writeText(`${window.location.origin}/report/${reportId}`)
                 setCopied(true); setTimeout(() => setCopied(false), 2000)
@@ -207,18 +207,12 @@ export default function App() {
                 {copied ? '✓ Copied' : '⎘ Share'}
               </button>
             )}
-            {usage?.isAdmin ? (
-              <button className="axiom-btn" onClick={() => exportReportPDF(currentTicker, report, financials || {})} style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, background: T.accentLo, border: `1px solid ${T.accentBd}`, borderRadius: 7, padding: '7px 16px', cursor: 'pointer', transition: 'all 0.15s', letterSpacing: 0.3 }}
-                onMouseEnter={e => { e.currentTarget.style.background = `${T.accent}20`; e.currentTarget.style.transform = 'translateY(-1px)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = T.accentLo; e.currentTarget.style.transform = 'translateY(0)' }}
-              >
-                ⤓ Export PDF
-              </button>
-            ) : (
-              <div title="Pro feature — coming soon" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 7, padding: '7px 16px', cursor: 'not-allowed', display: 'flex', alignItems: 'center', gap: 6 }}>
-                ⤓ Export PDF <span style={{ fontSize: 9, color: T.accent, background: T.accentLo, border: `1px solid ${T.accentBd}`, borderRadius: 3, padding: '1px 5px', letterSpacing: 0.5 }}>PRO</span>
-              </div>
-            )}
+            <button className="axiom-btn" onClick={() => exportReportPDF(currentTicker, report, financials || {})} style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, background: T.accentLo, border: `1px solid ${T.accentBd}`, borderRadius: 7, padding: '7px 16px', cursor: 'pointer', transition: 'all 0.15s', letterSpacing: 0.3 }}
+              onMouseEnter={e => { e.currentTarget.style.background = `${T.accent}20`; e.currentTarget.style.transform = 'translateY(-1px)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = T.accentLo; e.currentTarget.style.transform = 'translateY(0)' }}
+            >
+              ⤓ Export PDF
+            </button>
             {clerkEnabled && <AppUserButton />}
           </div>
         </header>

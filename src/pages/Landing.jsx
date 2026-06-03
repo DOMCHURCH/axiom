@@ -445,7 +445,7 @@ function Hero({ navigate, runDemo, ticker, setTicker, loading, progress, progres
         </div>
 
         {/* ── Right: mockup with parallax ── */}
-        <div style={{ animation:'fadeUp 0.65s ease 0.18s both', minWidth:0, transform:`translateY(${heroP * -60}px)`, willChange:'transform' }}>
+        <div className="hero-mockup" style={{ animation:'fadeUp 0.65s ease 0.18s both', minWidth:0, transform:`translateY(${heroP * -60}px)`, willChange:'transform' }}>
           <ReportMockup />
         </div>
       </div>
@@ -692,7 +692,7 @@ function HowItWorks() {
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:0 }} className="steps-grid">
           {steps.map((s,i)=>(
             <Reveal key={i} delay={i*0.08} style={{ padding:'0 20px', textAlign:'center', position:'relative' }}>
-              {i < 3 && <div style={{ position:'absolute', top:26, right:'-10%', width:'20%', height:1, background:'linear-gradient(90deg, rgba(124,58,237,0.4), transparent)', zIndex:0 }} />}
+              {i < 3 && <div className="step-connector" style={{ position:'absolute', top:26, right:'-10%', width:'20%', height:1, background:'linear-gradient(90deg, rgba(124,58,237,0.4), transparent)', zIndex:0 }} />}
               <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(124,58,237,0.1)', border:'1px solid rgba(124,58,237,0.25)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px', boxShadow:'0 0 0 6px rgba(4,4,10,1)' }}>
                 <span style={{ fontFamily:T.mono, fontSize:11, fontWeight:700, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>{s.n}</span>
               </div>
@@ -914,8 +914,8 @@ function FinalCTA({ navigate }) {
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function Footer() {
   return (
-    <footer style={{ background:T.bg, borderTop:`1px solid ${T.border}`, padding:'32px 40px' }}>
-      <div style={{ maxWidth:1000, margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:16 }}>
+    <footer className="footer-wrap" style={{ background:T.bg, borderTop:`1px solid ${T.border}`, padding:'32px 40px' }}>
+      <div className="footer-inner" style={{ maxWidth:1000, margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:16 }}>
         <div>
           <div style={{ fontFamily:T.mono, fontSize:14, fontWeight:800, letterSpacing:6, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', marginBottom:6 }}>AXIOM</div>
           <div style={{ fontFamily:T.mono, fontSize:9, color:T.text3 }}>Institutional Equity Research · Not investment advice</div>
@@ -984,6 +984,12 @@ export default function Landing() {
         .steps-grid { grid-template-columns: 1fr !important; }
         .usecases-grid { grid-template-columns: 1fr !important; }
         .stats-grid { grid-template-columns: 1fr 1fr !important; }
+        .hero-mockup { display: none !important; }
+        .footer-inner { flex-direction: column !important; align-items: flex-start !important; }
+      }
+      @media (max-width: 768px) {
+        .step-connector { display: none !important; }
+        .footer-wrap { padding: 24px 20px !important; }
       }
     `
     document.head.appendChild(style)
@@ -1020,9 +1026,9 @@ export default function Landing() {
       <div style={{ minHeight:'100vh', background:T.bg, color:T.text }}>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}`}</style>
         <div style={{ position:'sticky', top:0, zIndex:100, background:'rgba(13,5,32,0.92)', backdropFilter:'blur(16px) saturate(160%)', borderBottom:'1px solid rgba(124,58,237,0.25)', padding:'12px 24px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:9 }}>
-            <span style={{ fontSize:15 }}>✨</span>
-            <div style={{ fontFamily:T.sans, fontSize:13, color:T.text, fontWeight:600 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:9, flex:1, minWidth:0 }}>
+            <span style={{ fontSize:15, flexShrink:0 }}>✨</span>
+            <div style={{ fontFamily:T.sans, fontSize:13, color:T.text, fontWeight:600, minWidth:0 }}>
               This is a real {currentTicker} report.
               <span style={{ color:'rgba(167,139,250,0.95)', fontWeight:500 }}> Create a free account to save it, export to PDF & build your library.</span>
             </div>
