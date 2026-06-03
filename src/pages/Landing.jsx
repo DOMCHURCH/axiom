@@ -249,78 +249,94 @@ function Hero({ navigate, runDemo, ticker, setTicker, loading, progress, progres
   }
 
   return (
-    <section style={{ minHeight:'100vh', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'120px 24px 80px', textAlign:'center' }}>
+    <section style={{ minHeight:'100vh', position:'relative', overflow:'hidden', display:'flex', alignItems:'center', padding:'100px 0 60px' }}>
       {/* Animated gradient orbs */}
-      <div style={{ position:'absolute', top:'-15%', left:'10%', width:700, height:700, borderRadius:'50%', background:'radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%)', animation:'orbFloat 12s ease-in-out infinite', zIndex:0, pointerEvents:'none' }} />
-      <div style={{ position:'absolute', top:'20%', right:'-5%', width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 70%)', animation:'orbFloat 16s ease-in-out infinite reverse', zIndex:0, pointerEvents:'none' }} />
-      <div style={{ position:'absolute', bottom:'-10%', left:'30%', width:600, height:600, borderRadius:'50%', background:'radial-gradient(circle, rgba(6,182,212,0.08) 0%, transparent 70%)', animation:'orbFloat 14s ease-in-out infinite 4s', zIndex:0, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', top:'-20%', left:'-5%', width:800, height:800, borderRadius:'50%', background:'radial-gradient(circle, rgba(124,58,237,0.14) 0%, transparent 65%)', animation:'orbFloat 12s ease-in-out infinite', zIndex:0, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', top:'10%', right:'-10%', width:600, height:600, borderRadius:'50%', background:'radial-gradient(circle, rgba(37,99,235,0.1) 0%, transparent 65%)', animation:'orbFloat 16s ease-in-out infinite reverse', zIndex:0, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', bottom:'-10%', left:'40%', width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle, rgba(6,182,212,0.07) 0%, transparent 65%)', animation:'orbFloat 14s ease-in-out infinite 4s', zIndex:0, pointerEvents:'none' }} />
       {/* Grid */}
-      <div style={{ position:'absolute', inset:0, backgroundImage:`linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)`, backgroundSize:'64px 64px', zIndex:0 }} />
-      {/* Fade to bg at bottom */}
-      <div style={{ position:'absolute', bottom:0, left:0, right:0, height:250, background:`linear-gradient(to bottom, transparent, ${T.bg})`, zIndex:1 }} />
+      <div style={{ position:'absolute', inset:0, backgroundImage:`linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px)`, backgroundSize:'64px 64px', zIndex:0 }} />
+      {/* Right fade for photo bleed */}
+      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:'40%', background:`linear-gradient(to right, ${T.bg}, transparent)`, zIndex:2, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', bottom:0, left:0, right:0, height:200, background:`linear-gradient(to bottom, transparent, ${T.bg})`, zIndex:2 }} />
 
-      <div style={{ position:'relative', zIndex:2, maxWidth:800, width:'100%' }}>
-        <div style={{ animation:'fadeUp 0.6s ease both', display:'inline-flex', alignItems:'center', gap:8, background:'rgba(124,58,237,0.08)', border:'1px solid rgba(124,58,237,0.25)', borderRadius:99, padding:'6px 16px', marginBottom:28 }}>
-          <div style={{ width:6, height:6, borderRadius:'50%', background:T.green, boxShadow:`0 0 10px ${T.green}` }} />
-          <span style={{ fontFamily:T.mono, fontSize:10, color:'rgba(255,255,255,0.5)', letterSpacing:1.5 }}>LIVE · SEC EDGAR · 8,400+ US STOCKS</span>
-        </div>
-
-        <h1 style={{ animation:'fadeUp 0.6s ease 0.06s both', fontFamily:T.sans, fontSize:'clamp(50px,7.5vw,96px)', fontWeight:900, letterSpacing:'-0.04em', lineHeight:0.95, margin:'0 0 26px', color:T.text }}>
-          Institutional<br />
-          <GradientText>equity research</GradientText><br />
-          in 60 seconds.
-        </h1>
-
-        <p style={{ animation:'fadeUp 0.6s ease 0.12s both', fontFamily:T.sans, fontSize:18, color:T.text2, lineHeight:1.75, margin:'0 auto 44px', maxWidth:540 }}>
-          Full DCF models, Monte Carlo simulation, comps, risk matrices, and BUY/HOLD/SELL recommendations — powered by live SEC EDGAR filings.
-        </p>
-
-        {/* Search input */}
-        <div style={{ animation:'fadeUp 0.6s ease 0.18s both', maxWidth:520, margin:'0 auto' }}>
-          <form onSubmit={e=>{e.preventDefault();handleGenerate(ticker)}}>
-            <div style={{ display:'flex', gap:0, marginBottom:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${focused?'rgba(124,58,237,0.6)':T.border2}`, borderRadius:14, overflow:'hidden', boxShadow: focused ? '0 0 0 4px rgba(124,58,237,0.15), 0 20px 60px rgba(0,0,0,0.4)' : '0 8px 40px rgba(0,0,0,0.4)', transition:'all 0.2s ease', backdropFilter:'blur(10px)' }}>
-              <div style={{ display:'flex', alignItems:'center', padding:'0 18px', borderRight:`1px solid ${T.border}` }}>
-                <span style={{ fontFamily:T.mono, fontSize:16, color:T.text3 }}>$</span>
-              </div>
-              <input ref={inputRef} type="text" placeholder="Enter ticker: AAPL, NVDA, MSFT..." value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase().replace(/[^A-Z.]/g,''))} disabled={loading} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
-                style={{ flex:1, background:'transparent', border:'none', padding:'18px 16px', color:T.text, fontFamily:T.mono, fontSize:14, outline:'none' }} />
-              <button type="submit" disabled={loading||!ticker.trim()} style={{ background: loading||!ticker.trim() ? 'transparent' : T.grad, color: loading||!ticker.trim() ? T.text3 : '#fff', border:'none', padding:'0 24px', fontFamily:T.mono, fontSize:12, fontWeight:700, cursor: loading||!ticker.trim() ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', gap:8, transition:'all 0.15s', whiteSpace:'nowrap', borderLeft:`1px solid ${T.border}`, letterSpacing:0.5 }}>
-                {loading ? <><Spinner /> Analyzing...</> : isSignedIn ? 'Analyze →' : 'Preview →'}
-              </button>
-            </div>
-          </form>
-
-          {loading && (
-            <div style={{ marginBottom:14 }}>
-              <div style={{ height:2, background:'rgba(255,255,255,0.06)', borderRadius:1, overflow:'hidden', marginBottom:7 }}>
-                <div style={{ height:'100%', background:T.grad, width:progressPct+'%', transition:'width 0.5s ease', borderRadius:1 }} />
-              </div>
-              <div style={{ fontFamily:T.mono, fontSize:11, color:T.violet, animation:'pulse 1.5s infinite' }}>{progress}</div>
-            </div>
-          )}
-          {error && !error.includes('limit') && (
-            <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:8, padding:'10px 14px', fontFamily:T.mono, fontSize:11, color:T.red, marginBottom:14 }}>⚠ {error}</div>
-          )}
-
-          <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', justifyContent:'center', marginBottom:20 }}>
-            <span style={{ fontFamily:T.mono, fontSize:10, color:T.text3 }}>Try:</span>
-            {POPULAR.map(t=>(
-              <button key={t} onClick={()=>{setTicker(t);handleGenerate(t)}} style={{ fontFamily:T.mono, fontSize:10, color:T.text3, background:'rgba(255,255,255,0.04)', border:`1px solid ${T.border}`, borderRadius:6, padding:'4px 10px', cursor:'pointer', transition:'all 0.15s' }} onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(124,58,237,0.5)';e.currentTarget.style.color='rgba(124,58,237,1)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.color=T.text3}}>{t}</button>
-            ))}
-          </div>
-          <div style={{ display:'flex', gap:22, justifyContent:'center', flexWrap:'wrap' }}>
-            {['Free preview — no signup','No API keys needed','Real SEC EDGAR data'].map(t=>(
-              <span key={t} style={{ fontFamily:T.mono, fontSize:10, color:T.text3, display:'flex', alignItems:'center', gap:6 }}>
-                <span style={{ color:T.green }}>✓</span> {t}
-              </span>
-            ))}
-          </div>
-        </div>
+      {/* Background photo — right side bleed */}
+      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:'55%', zIndex:1, overflow:'hidden' }}>
+        <img
+          src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200&h=900&fit=crop&q=85"
+          alt="Stock market trading screens"
+          style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0.18 }}
+        />
+        <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right, rgba(4,4,10,1) 0%, rgba(4,4,10,0.5) 40%, rgba(4,4,10,0.05) 100%)' }} />
       </div>
 
-      {/* Hero mockup */}
-      <div style={{ position:'relative', zIndex:2, width:'100%', maxWidth:680, marginTop:72, animation:'fadeUp 0.8s ease 0.3s both' }}>
-        <ReportMockup />
+      {/* Main content — 2 column */}
+      <div style={{ position:'relative', zIndex:3, maxWidth:1200, width:'100%', margin:'0 auto', padding:'0 48px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }} className="hero-grid">
+
+        {/* Left: copy + search */}
+        <div>
+          <div style={{ animation:'fadeUp 0.6s ease both', display:'inline-flex', alignItems:'center', gap:8, background:'rgba(124,58,237,0.08)', border:'1px solid rgba(124,58,237,0.25)', borderRadius:99, padding:'6px 16px', marginBottom:28 }}>
+            <div style={{ width:6, height:6, borderRadius:'50%', background:T.green, boxShadow:`0 0 10px ${T.green}` }} />
+            <span style={{ fontFamily:T.mono, fontSize:10, color:'rgba(255,255,255,0.5)', letterSpacing:1.5 }}>LIVE · SEC EDGAR · 8,400+ US STOCKS</span>
+          </div>
+
+          <h1 style={{ animation:'fadeUp 0.6s ease 0.06s both', fontFamily:T.sans, fontSize:'clamp(42px,4.5vw,72px)', fontWeight:900, letterSpacing:'-0.04em', lineHeight:1, margin:'0 0 22px', color:T.text }}>
+            Institutional<br />
+            <GradientText>equity research</GradientText><br />
+            in 60 seconds.
+          </h1>
+
+          <p style={{ animation:'fadeUp 0.6s ease 0.12s both', fontFamily:T.sans, fontSize:16, color:T.text2, lineHeight:1.8, margin:'0 0 36px', maxWidth:480 }}>
+            Full DCF models, Monte Carlo simulation, comps, risk matrices, and BUY/HOLD/SELL recommendations — powered by live SEC EDGAR filings.
+          </p>
+
+          {/* Search input */}
+          <div style={{ animation:'fadeUp 0.6s ease 0.18s both' }}>
+            <form onSubmit={e=>{e.preventDefault();handleGenerate(ticker)}}>
+              <div style={{ display:'flex', gap:0, marginBottom:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${focused?'rgba(124,58,237,0.6)':T.border2}`, borderRadius:14, overflow:'hidden', boxShadow: focused ? '0 0 0 4px rgba(124,58,237,0.15), 0 20px 60px rgba(0,0,0,0.5)' : '0 8px 40px rgba(0,0,0,0.4)', transition:'all 0.2s ease', backdropFilter:'blur(10px)' }}>
+                <div style={{ display:'flex', alignItems:'center', padding:'0 18px', borderRight:`1px solid ${T.border}` }}>
+                  <span style={{ fontFamily:T.mono, fontSize:16, color:T.text3 }}>$</span>
+                </div>
+                <input ref={inputRef} type="text" placeholder="Enter ticker: AAPL, NVDA, MSFT..." value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase().replace(/[^A-Z.]/g,''))} disabled={loading} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+                  style={{ flex:1, background:'transparent', border:'none', padding:'17px 16px', color:T.text, fontFamily:T.mono, fontSize:14, outline:'none' }} />
+                <button type="submit" disabled={loading||!ticker.trim()} style={{ background: loading||!ticker.trim() ? 'transparent' : T.grad, color: loading||!ticker.trim() ? T.text3 : '#fff', border:'none', padding:'0 22px', fontFamily:T.mono, fontSize:12, fontWeight:700, cursor: loading||!ticker.trim() ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', gap:8, transition:'all 0.15s', whiteSpace:'nowrap', borderLeft:`1px solid ${T.border}`, letterSpacing:0.5 }}>
+                  {loading ? <><Spinner /> Analyzing...</> : isSignedIn ? 'Analyze →' : 'Preview →'}
+                </button>
+              </div>
+            </form>
+
+            {loading && (
+              <div style={{ marginBottom:14 }}>
+                <div style={{ height:2, background:'rgba(255,255,255,0.06)', borderRadius:1, overflow:'hidden', marginBottom:7 }}>
+                  <div style={{ height:'100%', background:T.grad, width:progressPct+'%', transition:'width 0.5s ease', borderRadius:1 }} />
+                </div>
+                <div style={{ fontFamily:T.mono, fontSize:11, color:T.violet, animation:'pulse 1.5s infinite' }}>{progress}</div>
+              </div>
+            )}
+            {error && !error.includes('limit') && (
+              <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:8, padding:'10px 14px', fontFamily:T.mono, fontSize:11, color:T.red, marginBottom:14 }}>⚠ {error}</div>
+            )}
+
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', marginBottom:20 }}>
+              <span style={{ fontFamily:T.mono, fontSize:10, color:T.text3 }}>Try:</span>
+              {POPULAR.map(t=>(
+                <button key={t} onClick={()=>{setTicker(t);handleGenerate(t)}} style={{ fontFamily:T.mono, fontSize:10, color:T.text3, background:'rgba(255,255,255,0.04)', border:`1px solid ${T.border}`, borderRadius:6, padding:'4px 10px', cursor:'pointer', transition:'all 0.15s' }} onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(124,58,237,0.5)';e.currentTarget.style.color='rgba(124,58,237,1)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.color=T.text3}}>{t}</button>
+              ))}
+            </div>
+            <div style={{ display:'flex', gap:20, flexWrap:'wrap' }}>
+              {['Free preview — no signup','No API keys needed','Real SEC EDGAR data'].map(t=>(
+                <span key={t} style={{ fontFamily:T.mono, fontSize:10, color:T.text3, display:'flex', alignItems:'center', gap:6 }}>
+                  <span style={{ color:T.green }}>✓</span> {t}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: report mockup */}
+        <div style={{ animation:'fadeUp 0.7s ease 0.25s both' }}>
+          <ReportMockup />
+        </div>
       </div>
     </section>
   )
@@ -780,7 +796,8 @@ export default function Landing() {
       @keyframes fadeUp { from { opacity: 0; transform: translateY(28px) } to { opacity: 1; transform: translateY(0) } }
       @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
       @keyframes orbFloat { 0%,100% { transform: translate(0,0) } 33% { transform: translate(30px,-20px) } 66% { transform: translate(-20px,15px) } }
-      @media (max-width:768px) {
+      @media (max-width:900px) {
+        .hero-grid { grid-template-columns: 1fr !important; padding: 0 24px !important; }
         .bento-grid { grid-template-columns: 1fr !important; }
         .bento-grid > * { grid-column: span 1 !important; }
         .pricing-grid { grid-template-columns: 1fr !important; }
