@@ -18,11 +18,14 @@ export default async function handler(req, res) {
   try {
     await initDb()
     const usage = await getUsage(userId)
+    const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').filter(Boolean)
+    const isAdmin = adminIds.includes(userId)
     return res.status(200).json({
       used: usage.report_count,
-      limit: FREE_LIMIT,
-      remaining: Math.max(0, FREE_LIMIT - usage.report_count),
+      limit: isAdmin ? Infinity : FREE_LIMIT,
+      remaining: isAdmin ? Infinity : Math.max(0, FREE_LIMIT - usage.report_count),
       resetAt: usage.reset_at,
+      isAdmin,
     })
   } catch (err) {
     console.error('Usage error:', err)

@@ -182,7 +182,7 @@ export default function App() {
             )}
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {reportId && (
+            {usage?.isAdmin && reportId && (
               <button onClick={() => {
                 navigator.clipboard.writeText(`${window.location.origin}/report/${reportId}`)
                 setCopied(true); setTimeout(() => setCopied(false), 2000)
@@ -190,9 +190,15 @@ export default function App() {
                 {copied ? '✓ Copied' : '⎘ Share'}
               </button>
             )}
-            <button onClick={() => exportReportPDF(currentTicker)} style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, background: T.accentLo, border: `1px solid ${T.accentBd}`, borderRadius: 5, padding: '6px 14px', cursor: 'pointer' }}>
-              ⤓ Export PDF
-            </button>
+            {usage?.isAdmin ? (
+              <button onClick={() => exportReportPDF(currentTicker)} style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, background: T.accentLo, border: `1px solid ${T.accentBd}`, borderRadius: 5, padding: '6px 14px', cursor: 'pointer' }}>
+                ⤓ Export PDF
+              </button>
+            ) : (
+              <div title="Pro feature — coming soon" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 5, padding: '6px 14px', cursor: 'not-allowed', display: 'flex', alignItems: 'center', gap: 6 }}>
+                ⤓ Export PDF <span style={{ fontSize: 9, color: T.accent, background: T.accentLo, border: `1px solid ${T.accentBd}`, borderRadius: 3, padding: '1px 5px', letterSpacing: 0.5 }}>PRO</span>
+              </div>
+            )}
             {clerkEnabled && <AppUserButton />}
           </div>
         </header>
@@ -216,16 +222,23 @@ export default function App() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {usage && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ display: 'flex', gap: 4 }}>
-                {Array.from({ length: FREE_LIMIT }).map((_, i) => (
-                  <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i < (FREE_LIMIT - usage.remaining) ? T.muted : T.accent, border: `1px solid ${T.border2}` }} />
-                ))}
+            usage.isAdmin ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontFamily: T.mono, fontSize: 9, color: T.accent, background: T.accentLo, border: `1px solid ${T.accentBd}`, borderRadius: 4, padding: '3px 8px', letterSpacing: 1 }}>ADMIN</span>
+                <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted2 }}>∞ reports</span>
               </div>
-              <span style={{ fontFamily: T.mono, fontSize: 10, color: usage.remaining === 0 ? T.red : T.muted2 }}>
-                {usage.remaining}/{FREE_LIMIT} reports
-              </span>
-            </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {Array.from({ length: FREE_LIMIT }).map((_, i) => (
+                    <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i < (FREE_LIMIT - usage.remaining) ? T.muted : T.accent, border: `1px solid ${T.border2}` }} />
+                  ))}
+                </div>
+                <span style={{ fontFamily: T.mono, fontSize: 10, color: usage.remaining === 0 ? T.red : T.muted2 }}>
+                  {usage.remaining}/{FREE_LIMIT} reports
+                </span>
+              </div>
+            )
           )}
           {clerkEnabled && isSignedIn && (
             <button onClick={() => navigate('/account')} style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 4, padding: '5px 12px', cursor: 'pointer', transition: 'color 0.15s' }}
