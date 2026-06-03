@@ -249,92 +249,89 @@ function Hero({ navigate, runDemo, ticker, setTicker, loading, progress, progres
   }
 
   return (
-    <section style={{ minHeight:'100vh', position:'relative', overflow:'hidden', display:'flex', alignItems:'center', padding:'100px 0 60px' }}>
-      {/* Animated gradient orbs */}
-      <div style={{ position:'absolute', top:'-20%', left:'-5%', width:800, height:800, borderRadius:'50%', background:'radial-gradient(circle, rgba(124,58,237,0.14) 0%, transparent 65%)', animation:'orbFloat 12s ease-in-out infinite', zIndex:0, pointerEvents:'none' }} />
-      <div style={{ position:'absolute', top:'10%', right:'-10%', width:600, height:600, borderRadius:'50%', background:'radial-gradient(circle, rgba(37,99,235,0.1) 0%, transparent 65%)', animation:'orbFloat 16s ease-in-out infinite reverse', zIndex:0, pointerEvents:'none' }} />
-      <div style={{ position:'absolute', bottom:'-10%', left:'40%', width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle, rgba(6,182,212,0.07) 0%, transparent 65%)', animation:'orbFloat 14s ease-in-out infinite 4s', zIndex:0, pointerEvents:'none' }} />
-      {/* Grid */}
-      <div style={{ position:'absolute', inset:0, backgroundImage:`linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px)`, backgroundSize:'64px 64px', zIndex:0 }} />
-      {/* Right fade for photo bleed */}
-      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:'40%', background:`linear-gradient(to right, ${T.bg}, transparent)`, zIndex:2, pointerEvents:'none' }} />
-      <div style={{ position:'absolute', bottom:0, left:0, right:0, height:200, background:`linear-gradient(to bottom, transparent, ${T.bg})`, zIndex:2 }} />
+    <section style={{ minHeight:'100vh', position:'relative', overflow:'hidden', display:'flex', alignItems:'center', paddingTop:80 }}>
+      {/* Gradient orbs */}
+      <div style={{ position:'absolute', top:'-10%', left:'-8%', width:700, height:700, borderRadius:'50%', background:'radial-gradient(circle, rgba(124,58,237,0.13) 0%, transparent 65%)', animation:'orbFloat 12s ease-in-out infinite', zIndex:0, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', bottom:'-15%', right:'-5%', width:600, height:600, borderRadius:'50%', background:'radial-gradient(circle, rgba(37,99,235,0.1) 0%, transparent 65%)', animation:'orbFloat 16s ease-in-out infinite reverse', zIndex:0, pointerEvents:'none' }} />
+      {/* Grid overlay */}
+      <div style={{ position:'absolute', inset:0, backgroundImage:`linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)`, backgroundSize:'64px 64px', zIndex:0 }} />
+      {/* Bottom fade */}
+      <div style={{ position:'absolute', bottom:0, left:0, right:0, height:160, background:`linear-gradient(to bottom, transparent, ${T.bg})`, zIndex:2, pointerEvents:'none' }} />
 
-      {/* Background photo — right side bleed */}
-      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:'55%', zIndex:1, overflow:'hidden' }}>
-        <img
-          src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200&h=900&fit=crop&q=85"
-          alt="Stock market trading screens"
-          style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0.18 }}
-        />
-        <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right, rgba(4,4,10,1) 0%, rgba(4,4,10,0.5) 40%, rgba(4,4,10,0.05) 100%)' }} />
+      {/* Full-bleed background photo */}
+      <div style={{ position:'absolute', inset:0, zIndex:1 }}>
+        <img src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1600&h=900&fit=crop&q=80" alt="" style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0.07 }} />
+        <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(4,4,10,0.95) 0%, rgba(4,4,10,0.7) 50%, rgba(4,4,10,0.85) 100%)' }} />
       </div>
 
-      {/* Main content — 2 column */}
-      <div style={{ position:'relative', zIndex:3, maxWidth:1200, width:'100%', margin:'0 auto', padding:'0 48px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }} className="hero-grid">
+      {/* 2-column layout */}
+      <div className="hero-grid" style={{ position:'relative', zIndex:3, maxWidth:1160, width:'100%', margin:'0 auto', padding:'48px 40px 80px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:56, alignItems:'center' }}>
 
-        {/* Left: copy + search */}
-        <div>
-          <div style={{ animation:'fadeUp 0.6s ease both', display:'inline-flex', alignItems:'center', gap:8, background:'rgba(124,58,237,0.08)', border:'1px solid rgba(124,58,237,0.25)', borderRadius:99, padding:'6px 16px', marginBottom:28 }}>
-            <div style={{ width:6, height:6, borderRadius:'50%', background:T.green, boxShadow:`0 0 10px ${T.green}` }} />
-            <span style={{ fontFamily:T.mono, fontSize:10, color:'rgba(255,255,255,0.5)', letterSpacing:1.5 }}>LIVE · SEC EDGAR · 8,400+ US STOCKS</span>
+        {/* ── Left: copy + input ── */}
+        <div style={{ animation:'fadeUp 0.55s ease both' }}>
+          {/* Live badge */}
+          <div style={{ display:'inline-flex', alignItems:'center', gap:7, background:'rgba(124,58,237,0.1)', border:'1px solid rgba(124,58,237,0.28)', borderRadius:99, padding:'5px 14px', marginBottom:24 }}>
+            <div style={{ width:6, height:6, borderRadius:'50%', background:T.green, boxShadow:`0 0 8px ${T.green}` }} />
+            <span style={{ fontFamily:T.mono, fontSize:10, color:'rgba(255,255,255,0.45)', letterSpacing:1.5 }}>LIVE · SEC EDGAR · 8,400+ US STOCKS</span>
           </div>
 
-          <h1 style={{ animation:'fadeUp 0.6s ease 0.06s both', fontFamily:T.sans, fontSize:'clamp(42px,4.5vw,72px)', fontWeight:900, letterSpacing:'-0.04em', lineHeight:1, margin:'0 0 22px', color:T.text }}>
+          {/* Headline */}
+          <h1 style={{ fontFamily:T.sans, fontSize:'clamp(36px,3.8vw,64px)', fontWeight:900, letterSpacing:'-0.04em', lineHeight:1.05, margin:'0 0 20px', color:T.text }}>
             Institutional<br />
             <GradientText>equity research</GradientText><br />
             in 60 seconds.
           </h1>
 
-          <p style={{ animation:'fadeUp 0.6s ease 0.12s both', fontFamily:T.sans, fontSize:16, color:T.text2, lineHeight:1.8, margin:'0 0 36px', maxWidth:480 }}>
-            Full DCF models, Monte Carlo simulation, comps, risk matrices, and BUY/HOLD/SELL recommendations — powered by live SEC EDGAR filings.
+          {/* Subtext */}
+          <p style={{ fontFamily:T.sans, fontSize:15, color:T.text2, lineHeight:1.8, margin:'0 0 32px', maxWidth:440 }}>
+            Full DCF models, Monte Carlo simulation, comps tables, risk matrices, and BUY/HOLD/SELL — powered by live SEC EDGAR filings.
           </p>
 
-          {/* Search input */}
-          <div style={{ animation:'fadeUp 0.6s ease 0.18s both' }}>
-            <form onSubmit={e=>{e.preventDefault();handleGenerate(ticker)}}>
-              <div style={{ display:'flex', gap:0, marginBottom:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${focused?'rgba(124,58,237,0.6)':T.border2}`, borderRadius:14, overflow:'hidden', boxShadow: focused ? '0 0 0 4px rgba(124,58,237,0.15), 0 20px 60px rgba(0,0,0,0.5)' : '0 8px 40px rgba(0,0,0,0.4)', transition:'all 0.2s ease', backdropFilter:'blur(10px)' }}>
-                <div style={{ display:'flex', alignItems:'center', padding:'0 18px', borderRight:`1px solid ${T.border}` }}>
-                  <span style={{ fontFamily:T.mono, fontSize:16, color:T.text3 }}>$</span>
-                </div>
-                <input ref={inputRef} type="text" placeholder="Enter ticker: AAPL, NVDA, MSFT..." value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase().replace(/[^A-Z.]/g,''))} disabled={loading} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
-                  style={{ flex:1, background:'transparent', border:'none', padding:'17px 16px', color:T.text, fontFamily:T.mono, fontSize:14, outline:'none' }} />
-                <button type="submit" disabled={loading||!ticker.trim()} style={{ background: loading||!ticker.trim() ? 'transparent' : T.grad, color: loading||!ticker.trim() ? T.text3 : '#fff', border:'none', padding:'0 22px', fontFamily:T.mono, fontSize:12, fontWeight:700, cursor: loading||!ticker.trim() ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', gap:8, transition:'all 0.15s', whiteSpace:'nowrap', borderLeft:`1px solid ${T.border}`, letterSpacing:0.5 }}>
-                  {loading ? <><Spinner /> Analyzing...</> : isSignedIn ? 'Analyze →' : 'Preview →'}
-                </button>
-              </div>
-            </form>
-
-            {loading && (
-              <div style={{ marginBottom:14 }}>
-                <div style={{ height:2, background:'rgba(255,255,255,0.06)', borderRadius:1, overflow:'hidden', marginBottom:7 }}>
-                  <div style={{ height:'100%', background:T.grad, width:progressPct+'%', transition:'width 0.5s ease', borderRadius:1 }} />
-                </div>
-                <div style={{ fontFamily:T.mono, fontSize:11, color:T.violet, animation:'pulse 1.5s infinite' }}>{progress}</div>
-              </div>
-            )}
-            {error && !error.includes('limit') && (
-              <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:8, padding:'10px 14px', fontFamily:T.mono, fontSize:11, color:T.red, marginBottom:14 }}>⚠ {error}</div>
-            )}
-
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', marginBottom:20 }}>
-              <span style={{ fontFamily:T.mono, fontSize:10, color:T.text3 }}>Try:</span>
-              {POPULAR.map(t=>(
-                <button key={t} onClick={()=>{setTicker(t);handleGenerate(t)}} style={{ fontFamily:T.mono, fontSize:10, color:T.text3, background:'rgba(255,255,255,0.04)', border:`1px solid ${T.border}`, borderRadius:6, padding:'4px 10px', cursor:'pointer', transition:'all 0.15s' }} onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(124,58,237,0.5)';e.currentTarget.style.color='rgba(124,58,237,1)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.color=T.text3}}>{t}</button>
-              ))}
+          {/* Search bar */}
+          <form onSubmit={e=>{e.preventDefault();handleGenerate(ticker)}} style={{ marginBottom:12 }}>
+            <div style={{ display:'flex', background:'rgba(255,255,255,0.05)', border:`1.5px solid ${focused?'rgba(124,58,237,0.7)':T.border2}`, borderRadius:12, overflow:'hidden', backdropFilter:'blur(16px)', boxShadow: focused ? '0 0 0 3px rgba(124,58,237,0.12)' : 'none', transition:'border-color 0.2s, box-shadow 0.2s' }}>
+              <span style={{ display:'flex', alignItems:'center', padding:'0 16px', fontFamily:T.mono, fontSize:15, color:T.text3, borderRight:`1px solid rgba(255,255,255,0.07)`, flexShrink:0 }}>$</span>
+              <input ref={inputRef} type="text" placeholder="Ticker symbol — AAPL, NVDA, MSFT..." value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase().replace(/[^A-Z.]/g,''))} disabled={loading} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+                style={{ flex:1, background:'transparent', border:'none', padding:'15px 14px', color:T.text, fontFamily:T.mono, fontSize:13, outline:'none', minWidth:0 }} />
+              <button type="submit" disabled={loading||!ticker.trim()} style={{ flexShrink:0, background: loading||!ticker.trim() ? 'transparent' : T.grad, color: loading||!ticker.trim() ? T.text3 : '#fff', border:'none', borderLeft:`1px solid rgba(255,255,255,0.07)`, padding:'0 20px', fontFamily:T.mono, fontSize:11, fontWeight:700, cursor: loading||!ticker.trim() ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', gap:7, transition:'all 0.15s', whiteSpace:'nowrap', letterSpacing:0.5 }}>
+                {loading ? <><Spinner />Running...</> : isSignedIn ? 'Analyze →' : 'Preview →'}
+              </button>
             </div>
-            <div style={{ display:'flex', gap:20, flexWrap:'wrap' }}>
-              {['Free preview — no signup','No API keys needed','Real SEC EDGAR data'].map(t=>(
-                <span key={t} style={{ fontFamily:T.mono, fontSize:10, color:T.text3, display:'flex', alignItems:'center', gap:6 }}>
-                  <span style={{ color:T.green }}>✓</span> {t}
-                </span>
-              ))}
+          </form>
+
+          {/* Progress */}
+          {loading && (
+            <div style={{ marginBottom:12 }}>
+              <div style={{ height:2, background:'rgba(255,255,255,0.06)', borderRadius:1, overflow:'hidden', marginBottom:6 }}>
+                <div style={{ height:'100%', background:T.grad, width:progressPct+'%', transition:'width 0.5s ease' }} />
+              </div>
+              <span style={{ fontFamily:T.mono, fontSize:11, color:T.violet, animation:'pulse 1.5s infinite' }}>{progress}</span>
             </div>
+          )}
+          {error && !error.includes('limit') && (
+            <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:8, padding:'9px 13px', fontFamily:T.mono, fontSize:11, color:T.red, marginBottom:12 }}>⚠ {error}</div>
+          )}
+
+          {/* Quick picks */}
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', marginBottom:16 }}>
+            <span style={{ fontFamily:T.mono, fontSize:10, color:T.text3, flexShrink:0 }}>Try:</span>
+            {POPULAR.map(t=>(
+              <button key={t} onClick={()=>{setTicker(t);handleGenerate(t)}} style={{ fontFamily:T.mono, fontSize:10, color:T.text3, background:'rgba(255,255,255,0.04)', border:`1px solid rgba(255,255,255,0.08)`, borderRadius:6, padding:'4px 10px', cursor:'pointer', transition:'all 0.15s' }} onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(124,58,237,0.45)';e.currentTarget.style.color='rgba(167,139,250,1)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.08)';e.currentTarget.style.color=T.text3}}>{t}</button>
+            ))}
+          </div>
+
+          {/* Trust row */}
+          <div style={{ display:'flex', gap:18, flexWrap:'wrap' }}>
+            {['Free preview — no signup','No API keys','Real SEC data'].map(t=>(
+              <span key={t} style={{ fontFamily:T.mono, fontSize:10, color:T.text3, display:'flex', alignItems:'center', gap:5 }}>
+                <span style={{ color:T.green, fontSize:11 }}>✓</span>{t}
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* Right: report mockup */}
-        <div style={{ animation:'fadeUp 0.7s ease 0.25s both' }}>
+        {/* ── Right: mockup ── */}
+        <div style={{ animation:'fadeUp 0.65s ease 0.18s both', minWidth:0 }}>
           <ReportMockup />
         </div>
       </div>
@@ -796,16 +793,27 @@ export default function Landing() {
       @keyframes fadeUp { from { opacity: 0; transform: translateY(28px) } to { opacity: 1; transform: translateY(0) } }
       @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
       @keyframes orbFloat { 0%,100% { transform: translate(0,0) } 33% { transform: translate(30px,-20px) } 66% { transform: translate(-20px,15px) } }
-      @media (max-width:900px) {
-        .hero-grid { grid-template-columns: 1fr !important; padding: 0 24px !important; }
+      @media (max-width: 1024px) {
+        .hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; padding: 48px 24px 60px !important; }
+        .demo-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+        .bento-grid { grid-template-columns: 1fr 1fr !important; }
+        .bento-grid > *:first-child { grid-column: span 2 !important; }
+        .bento-grid > *:nth-child(n+2) { grid-column: span 1 !important; }
+      }
+      @media (max-width: 768px) {
+        .hero-grid { padding: 40px 20px 56px !important; }
         .bento-grid { grid-template-columns: 1fr !important; }
         .bento-grid > * { grid-column: span 1 !important; }
         .pricing-grid { grid-template-columns: 1fr !important; }
         .steps-grid { grid-template-columns: 1fr 1fr !important; }
         .usecases-grid { grid-template-columns: 1fr 1fr !important; }
         .stats-grid { grid-template-columns: 1fr 1fr !important; }
-        .demo-grid { grid-template-columns: 1fr !important; }
         .nav-links { display: none !important; }
+      }
+      @media (max-width: 480px) {
+        .steps-grid { grid-template-columns: 1fr !important; }
+        .usecases-grid { grid-template-columns: 1fr !important; }
+        .stats-grid { grid-template-columns: 1fr 1fr !important; }
       }
     `
     document.head.appendChild(style)
