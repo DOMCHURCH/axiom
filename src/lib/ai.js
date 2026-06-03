@@ -1,6 +1,6 @@
 const SYSTEM = `You are a managing director of equity research at a bulge-bracket investment bank with 20 years of experience covering public equities. You write for sophisticated institutional investors — pension funds, hedge funds, and family offices. Your analysis is precise, data-driven, and takes clear stances. You never hedge with "it depends" without explaining which way you lean. When data is limited, you make explicit assumptions and say so.`
 
-export async function generateResearch({ ticker, financials, apiKey, provider, model, onProgress }) {
+export async function generateResearch({ ticker, financials, clerkToken, onProgress }) {
   const fin = financials
   const t = ticker.toUpperCase()
 
@@ -21,66 +21,6 @@ D/E: ${fin.debtToEquity != null ? fin.debtToEquity.toFixed(2) + 'x' : 'N/A'} | I
 Op CF: ${dollar(fin.operatingCF)} | CapEx: ${dollar(fin.capex)} | FCF: ${dollar(fin.fcf)} | FCF Margin: ${pct(fin.fcfMargin)}
 Dividends: ${dollar(fin.dividendsPaid)} | Buybacks: ${dollar(fin.shareRepurchases)} | Shares: ${fin.shares != null ? (fin.shares / 1e6).toFixed(1) + 'M' : 'N/A'}`
 
-  // Groq free tier: 12k TPM — use single-pass to avoid hitting the limit twice
-  if (provider === 'groq') {
-    return generateSinglePass({ t, dataBlock, apiKey, provider, model, onProgress })
-  }
-
-  return generateTwoPass({ t, dataBlock, apiKey, provider, model, onProgress, fin })
-}
-
-async function generateTwoPass({ t, dataBlock, apiKey, provider, model, onProgress, fin }) {
-  const pass1Prompt = `Conduct a comprehensive equity research analysis on ${t}.
-
-${dataBlock}
-
-Structure your analysis across these sections. Be specific — reference actual numbers:
-
-1. BUSINESS OVERVIEW & COMPETITIVE MOAT
-   - Core business model and revenue drivers
-   - Competitive positioning and moat (pricing power, switching costs, network effects, scale)
-   - Industry dynamics and secular tailwinds/headwinds
-
-2. FINANCIAL ANALYSIS
-   - Revenue quality and growth trajectory (accelerating or decelerating?)
-   - Margin structure: gross, EBITDA, operating, net — trend and peer benchmarks
-   - FCF generation quality (working capital, capex intensity)
-   - Balance sheet: leverage, liquidity, capital allocation
-   - Return on capital (ROE, ROA) trend
-
-3. VALUATION FRAMEWORK
-   - DCF assumptions: near-term growth (3Y), long-term growth (5Y), terminal growth, WACC
-   - Implied intrinsic value per share
-   - Current trading multiples vs. sector peers
-
-4. BULL CASE — 3 specific points with numbers
-
-5. BEAR CASE — 3 specific points with numbers
-
-6. RISK MATRIX — 4-6 risks, each rated HIGH/MEDIUM/LOW
-
-7. INVESTMENT RECOMMENDATION — BUY/HOLD/SELL, 12-month price target, upside %, 2 near-term catalysts`
-
-  onProgress?.('Pass 1/2 — analyst reasoning...')
-  const reasoning = await callAI({ systemPrompt: SYSTEM, prompt: pass1Prompt, apiKey, provider, model, onProgress })
-
-  const pass2Prompt = `Based on this equity research analysis of ${t}:
-
-${reasoning}
-
-Extract ALL fields into valid JSON. Output ONLY the JSON object — no markdown, no prose, no code fences.
-
-CRITICAL: All rates (growth, margins, WACC, yields) must be decimals — 0.15 means 15%, NOT 15. Multiples (EV/EBITDA, P/E) are plain numbers like 24.5. upside is a decimal: 0.15 = 15%.
-
-{"recommendation":"BUY"|"HOLD"|"SELL","targetPrice":number|null,"currentPrice":number|null,"upside":number|null,"companyDescription":"string","executiveSummary":"string","moatRating":"WIDE"|"NARROW"|"NONE","investmentThesis":"string","bullCase":["specific point WITH actual numbers from the data","specific point WITH actual numbers","specific point WITH actual numbers"],"bearCase":["specific point WITH actual numbers","specific point WITH actual numbers","specific point WITH actual numbers"],"catalysts":["near-term specific catalyst","near-term specific catalyst"],"dcfAssumptions":{"nearTermGrowth":0.12,"longTermGrowth":0.07,"terminalGrowthRate":0.025,"wacc":0.09,"ebitdaMargin":0.28,"fcfConversionRate":0.85},"comps":[{"ticker":"string","name":"string","evEbitda":24.5,"peRatio":32.1,"revenueGrowth":0.12,"grossMargin":0.68}],"risks":[{"title":"string","description":"string","severity":"HIGH"|"MEDIUM"|"LOW","category":"FINANCIAL"|"OPERATIONAL"|"REGULATORY"|"COMPETITIVE"|"MACRO"}],"tradingMultiples":{"evRevenue":number|null,"evEbitda":number|null,"peRatio":number|null,"fcfYield":number|null},"financialHighlights":{"revenueGrowthComment":"string","marginComment":"string","balanceSheetComment":"string","fcfComment":"string"},"analystNote":"2-3 sentence conviction statement — take a clear definitive stance, reference specific numbers, no generic boilerplate"}`
-
-  onProgress?.('Pass 2/2 — structuring output...')
-  const raw = await callAI({ systemPrompt: SYSTEM, prompt: pass2Prompt, apiKey, provider, model, onProgress })
-
-  return parseStructured(raw, reasoning)
-}
-
-async function generateSinglePass({ t, dataBlock, apiKey, provider, model, onProgress }) {
   onProgress?.('Analyzing — generating research...')
 
   const prompt = `Analyze ${t} and output a JSON research report. Be specific with numbers. Output ONLY valid JSON — no markdown, no prose, no code fences.
@@ -93,50 +33,47 @@ CRITICAL FORMATTING RULES:
 - Multiples (EV/EBITDA, P/E) are plain numbers: 24.5 means 24.5x. Realistic ranges: EV/EBITDA 5-50x, P/E 10-100x.
 - upside is a decimal: 0.15 = 15% upside. NEVER return 15 for 15%.
 
-JSON schema (fill every field — no nulls where data exists):
 {"recommendation":"BUY"|"HOLD"|"SELL","targetPrice":number|null,"currentPrice":number|null,"upside":number|null,"companyDescription":"one sentence","executiveSummary":"3-4 sentences covering growth, margins, valuation stance","moatRating":"WIDE"|"NARROW"|"NONE","investmentThesis":"2-3 sentences — specific, data-driven, take a clear stance","bullCase":["point with specific number","point with specific number","point with specific number"],"bearCase":["point with specific number","point with specific number","point with specific number"],"catalysts":["specific near-term catalyst","specific near-term catalyst"],"dcfAssumptions":{"nearTermGrowth":0.12,"longTermGrowth":0.07,"terminalGrowthRate":0.025,"wacc":0.09,"ebitdaMargin":0.28,"fcfConversionRate":0.85},"comps":[{"ticker":"string","name":"string","evEbitda":24.5,"peRatio":32.1,"revenueGrowth":0.12,"grossMargin":0.68},{"ticker":"string","name":"string","evEbitda":18.2,"peRatio":28.4,"revenueGrowth":0.09,"grossMargin":0.72},{"ticker":"string","name":"string","evEbitda":21.0,"peRatio":30.5,"revenueGrowth":0.15,"grossMargin":0.61}],"risks":[{"title":"string","description":"string","severity":"HIGH"|"MEDIUM"|"LOW","category":"FINANCIAL"|"OPERATIONAL"|"REGULATORY"|"COMPETITIVE"|"MACRO"},{"title":"string","description":"string","severity":"HIGH"|"MEDIUM"|"LOW","category":"FINANCIAL"|"OPERATIONAL"|"REGULATORY"|"COMPETITIVE"|"MACRO"},{"title":"string","description":"string","severity":"HIGH"|"MEDIUM"|"LOW","category":"FINANCIAL"|"OPERATIONAL"|"REGULATORY"|"COMPETITIVE"|"MACRO"},{"title":"string","description":"string","severity":"HIGH"|"MEDIUM"|"LOW","category":"FINANCIAL"|"OPERATIONAL"|"REGULATORY"|"COMPETITIVE"|"MACRO"}],"tradingMultiples":{"evRevenue":number|null,"evEbitda":number|null,"peRatio":number|null,"fcfYield":number|null},"financialHighlights":{"revenueGrowthComment":"string","marginComment":"string","balanceSheetComment":"string","fcfComment":"string"},"analystNote":"2-3 sentences — definitive stance, cite specific numbers, no boilerplate"}`
 
-  const raw = await callAI({ systemPrompt: SYSTEM, prompt, apiKey, provider, model, onProgress })
-  return parseStructured(raw, null)
-}
+  const raw = await callAI({ systemPrompt: SYSTEM, prompt, clerkToken })
 
-function parseStructured(raw, reasoning) {
   const jsonMatch = raw.match(/\{[\s\S]*\}/)
   if (!jsonMatch) throw new Error('AI returned unparseable output. Try again.')
   let structured
   try {
     structured = JSON.parse(jsonMatch[0])
   } catch {
-    throw new Error('JSON parse failed. The model may have truncated its response.')
+    throw new Error('JSON parse failed. Try again.')
   }
-  return { reasoning: reasoning ?? raw, structured }
+  return { reasoning: null, structured }
 }
 
-async function callAI({ prompt, systemPrompt, apiKey, provider, model, onProgress }) {
+async function callAI({ prompt, systemPrompt, clerkToken, _retries = 0 }) {
+  const headers = { 'Content-Type': 'application/json' }
+  if (clerkToken) headers['Authorization'] = `Bearer ${clerkToken}`
+
   const res = await fetch('/api/ai', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, systemPrompt, apiKey, provider, model }),
+    headers,
+    body: JSON.stringify({ prompt, systemPrompt }),
   })
-
-  if (res.status === 429 || res.status === 500) {
-    const err = await res.json().catch(() => ({}))
-    const msg = err.error || ''
-    const waitMatch = msg.match(/try again in ([\d.]+)s/i)
-    if (waitMatch) {
-      const waitSec = Math.ceil(parseFloat(waitMatch[1])) + 2
-      for (let i = waitSec; i > 0; i--) {
-        onProgress?.(`Rate limited — retrying in ${i}s...`)
-        await sleep(1000)
-      }
-      return callAI({ prompt, systemPrompt, apiKey, provider, model, onProgress })
-    }
-    throw new Error(msg || `AI request failed (${res.status})`)
-  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || `AI request failed (${res.status})`)
+
+    // Groq rate limit — wait and retry once
+    if (res.status === 429 && !err.limitReached && _retries < 2) {
+      const waitMatch = err.error?.match(/try again in ([\d.]+)s/i)
+      const wait = waitMatch ? Math.ceil(parseFloat(waitMatch[1])) + 1 : 5
+      await sleep(wait * 1000)
+      return callAI({ prompt, systemPrompt, clerkToken, _retries: _retries + 1 })
+    }
+
+    throw Object.assign(new Error(err.error || `Request failed (${res.status})`), {
+      limitReached: err.limitReached,
+      requiresAuth: err.requiresAuth,
+      resetAt: err.resetAt,
+    })
   }
 
   const data = await res.json()
