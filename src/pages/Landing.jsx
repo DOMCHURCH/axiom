@@ -86,6 +86,30 @@ function Reveal({ children, delay = 0, y = 32, blur = true, scale = false, style
   )
 }
 
+// Gentle parallax drift as element passes through viewport (disabled on mobile)
+function Parallax({ children, speed = 30, style, className }) {
+  const ref = useRef(null)
+  const [off, setOff] = useState(0)
+  useEffect(() => {
+    if (window.innerWidth < 768) return
+    let raf = 0
+    const onScroll = () => {
+      raf = requestAnimationFrame(() => {
+        const el = ref.current
+        if (!el) return
+        const r = el.getBoundingClientRect()
+        const center = r.top + r.height / 2
+        const fromMid = (center - window.innerHeight / 2) / window.innerHeight
+        setOff(-fromMid * speed)
+      })
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('scroll', onScroll) }
+  }, [speed])
+  return <div ref={ref} className={className} style={{ ...style, transform: `translateY(${off}px)`, willChange: 'transform' }}>{children}</div>
+}
+
 // Stagger children one-by-one as the container scrolls in
 function Stagger({ children, step = 0.08, y = 28, style, className }) {
   const [ref, inView] = useInView(0.12)
@@ -107,6 +131,26 @@ function Stagger({ children, step = 0.08, y = 28, style, className }) {
 
 function Spinner() {
   return <div style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
+}
+
+// Count-up that fires when scrolled into view (prefix/suffix for "< 60s", "8,400+")
+function CountUp({ to, prefix = '', suffix = '', dur = 1600, style }) {
+  const [ref, inView] = useInView(0.4)
+  const [val, setVal] = useState(0)
+  useEffect(() => {
+    if (!inView) return
+    let raf = 0, start = 0
+    const tick = (ts) => {
+      if (!start) start = ts
+      const t = Math.min(1, (ts - start) / dur)
+      const eased = 1 - Math.pow(1 - t, 3) // easeOutCubic
+      setVal(Math.round(to * eased))
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [inView, to, dur])
+  return <span ref={ref} style={style}>{prefix}{val.toLocaleString()}{suffix}</span>
 }
 
 function GradientText({ children, style }) {
@@ -432,17 +476,17 @@ function SocialProof() {
 // ─── Stats ────────────────────────────────────────────────────────────────────
 function Stats() {
   const items = [
-    { n:'8,400+', label:'US stocks covered', sub:'All SEC EDGAR filers' },
-    { n:'< 60s', label:'Average report time', sub:'From ticker to full note' },
-    { n:'2,000', label:'Monte Carlo trials', sub:'Per DCF valuation' },
-    { n:'Free', label:'To get started', sub:'No card, no keys' },
+    { node: <CountUp to={8400} suffix="+" />, label:'US stocks covered', sub:'All SEC EDGAR filers' },
+    { node: <CountUp to={60} prefix="< " suffix="s" />, label:'Average report time', sub:'From ticker to full note' },
+    { node: <CountUp to={2000} />, label:'Monte Carlo trials', sub:'Per DCF valuation' },
+    { node: 'Free', label:'To get started', sub:'No card, no keys' },
   ]
   return (
     <Reveal style={{ padding:'80px 24px', background:'rgba(255,255,255,0.01)' }}>
-      <div style={{ maxWidth:960, margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:0 }} className="stats-grid">
+      <div style={{ maxWidth:960, margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'32px 0' }} className="stats-grid">
         {items.map((s,i)=>(
-          <div key={i} style={{ padding:'0 32px', textAlign:'center', borderRight: i<3?`1px solid ${T.border}`:'none' }}>
-            <div style={{ fontFamily:T.mono, fontSize:36, fontWeight:800, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', marginBottom:8, letterSpacing:-1 }}>{s.n}</div>
+          <div key={i} className="stat-cell" style={{ padding:'0 32px', textAlign:'center', borderRight: i<3?`1px solid ${T.border}`:'none' }}>
+            <div style={{ fontFamily:T.mono, fontSize:'clamp(30px,4vw,40px)', fontWeight:800, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', marginBottom:8, letterSpacing:-1 }}>{s.node}</div>
             <div style={{ fontFamily:T.sans, fontSize:14, fontWeight:600, color:T.text, marginBottom:4 }}>{s.label}</div>
             <div style={{ fontFamily:T.mono, fontSize:10, color:T.text3 }}>{s.sub}</div>
           </div>
@@ -494,7 +538,7 @@ function Features() {
 
           {/* SEC Data card with image */}
           <Reveal delay={0.08} style={{ gridColumn:'span 2', borderRadius:20, overflow:'hidden', position:'relative', minHeight:220 }}>
-            <img src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600&h=400&fit=crop&q=80" alt="Financial data" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.25 }} />
+            <img src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600&h=400&fit=crop&q=80" alt="Financial data" className="kenburns" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.25 }} />
             <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(6,182,212,0.3), rgba(37,99,235,0.2))', backdropFilter:'blur(2px)' }} />
             <div style={{ position:'relative', padding:'28px 24px' }}>
               <div style={{ fontFamily:T.mono, fontSize:9, color:T.cyan, letterSpacing:2, textTransform:'uppercase', marginBottom:14 }}>03 — Data</div>
@@ -530,7 +574,7 @@ function Features() {
 
           {/* Recommendation image card */}
           <Reveal delay={0.14} style={{ gridColumn:'span 2', borderRadius:20, overflow:'hidden', position:'relative', minHeight:200 }}>
-            <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop&q=80" alt="Analytics dashboard" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.2 }} />
+            <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop&q=80" alt="Analytics dashboard" className="kenburns kenburns-alt" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.2 }} />
             <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(16,185,129,0.3), rgba(6,182,212,0.15))' }} />
             <div style={{ position:'relative', padding:'28px 24px' }}>
               <div style={{ fontFamily:T.mono, fontSize:9, color:T.green, letterSpacing:2, textTransform:'uppercase', marginBottom:14 }}>06 — Output</div>
@@ -581,36 +625,38 @@ function ForSection() {
 // ─── Apple-style scroll-scrub showcase ────────────────────────────────────────
 function Showcase() {
   const [ref, p] = useScrollProgress()
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
   // p: 0 (entering) → 1 (leaving). Use 0.1–0.6 window for the scrub.
   const t = Math.max(0, Math.min(1, (p - 0.1) / 0.45))
-  const scale = 0.82 + t * 0.18           // 0.82 → 1.0
+  const startScale = isMobile ? 0.9 : 0.82
+  const scale = startScale + t * (1 - startScale)   // → 1.0
   const opacity = 0.35 + t * 0.65          // dim → bright
   const radius = 32 - t * 18               // rounded → flatter
   const translateY = (1 - t) * 40
   const captionOpacity = Math.max(0, Math.min(1, (p - 0.35) / 0.2))
 
   return (
-    <section ref={ref} style={{ position:'relative', height:'200vh', borderTop:`1px solid ${T.border}` }}>
-      <div style={{ position:'sticky', top:0, height:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+    <section ref={ref} style={{ position:'relative', height: isMobile ? '160vh' : '200vh', borderTop:`1px solid ${T.border}` }}>
+      <div style={{ position:'sticky', top:0, height:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', overflow:'hidden', padding:'0 16px' }}>
         {/* Ambient glow that intensifies */}
-        <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:1000, height:700, borderRadius:'50%', background:`radial-gradient(ellipse, rgba(124,58,237,${0.06 + t*0.14}) 0%, transparent 70%)`, pointerEvents:'none', transition:'background 0.1s linear' }} />
+        <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:1000, height:700, borderRadius:'50%', background:`radial-gradient(ellipse, rgba(124,58,237,${0.06 + t*0.14}) 0%, transparent 70%)`, pointerEvents:'none', transition:'background 0.1s linear', maxWidth:'100vw' }} />
 
-        <div style={{ position:'relative', zIndex:2, textAlign:'center', marginBottom:40, opacity: Math.max(0, 1 - t*1.4), transform:`translateY(${-t*30}px)`, pointerEvents:'none' }}>
+        <div style={{ position:'relative', zIndex:2, textAlign:'center', marginBottom:32, opacity: Math.max(0, 1 - t*1.4), transform:`translateY(${-t*30}px)`, pointerEvents:'none' }}>
           <div style={{ fontFamily:T.mono, fontSize:11, letterSpacing:2.5, textTransform:'uppercase', marginBottom:14, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>The full report</div>
-          <h2 style={{ fontFamily:T.sans, fontSize:'clamp(36px,6vw,76px)', fontWeight:900, color:T.text, letterSpacing:'-0.05em', margin:0, lineHeight:0.95 }}>Every number.<br />Beautifully rendered.</h2>
+          <h2 style={{ fontFamily:T.sans, fontSize:'clamp(30px,6vw,76px)', fontWeight:900, color:T.text, letterSpacing:'-0.05em', margin:0, lineHeight:0.95 }}>Every number.<br />Beautifully rendered.</h2>
         </div>
 
         {/* The scaling hero image */}
-        <div style={{ position:'relative', zIndex:1, width:'min(1000px, 92vw)', transform:`scale(${scale}) translateY(${translateY}px)`, opacity, borderRadius:radius, overflow:'hidden', boxShadow:`0 ${40+t*60}px ${100+t*80}px rgba(0,0,0,0.7), 0 0 ${t*120}px rgba(124,58,237,${t*0.25})`, border:'1px solid rgba(255,255,255,0.1)', willChange:'transform, opacity' }}>
+        <div style={{ position:'relative', zIndex:1, width:'min(1000px, 94vw)', transform:`scale(${scale}) translateY(${translateY}px)`, opacity, borderRadius:radius, overflow:'hidden', boxShadow:`0 ${40+t*60}px ${100+t*80}px rgba(0,0,0,0.7), 0 0 ${t*120}px rgba(124,58,237,${t*0.25})`, border:'1px solid rgba(255,255,255,0.1)', willChange:'transform, opacity' }}>
           <img src="https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=1400&h=820&fit=crop&q=85" alt="Financial dashboard" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
           <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(124,58,237,0.18), rgba(6,182,212,0.1))' }} />
           {/* Caption overlay reveals near the end */}
-          <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'48px 40px 36px', background:'linear-gradient(to top, rgba(4,4,10,0.92), transparent)', opacity:captionOpacity, transform:`translateY(${(1-captionOpacity)*20}px)`, transition:'opacity 0.1s linear' }}>
-            <div style={{ display:'flex', gap:40, flexWrap:'wrap', justifyContent:'center' }}>
+          <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'48px 24px 28px', background:'linear-gradient(to top, rgba(4,4,10,0.92), transparent)', opacity:captionOpacity, transform:`translateY(${(1-captionOpacity)*20}px)`, transition:'opacity 0.1s linear' }}>
+            <div style={{ display:'flex', gap:'16px 32px', flexWrap:'wrap', justifyContent:'center' }}>
               {[['DCF + Monte Carlo','2,000 simulations'],['Live SEC EDGAR','Real XBRL data'],['Risk matrix','5-category scoring'],['60-second output','Ready to share']].map(([a,b])=>(
                 <div key={a} style={{ textAlign:'center' }}>
-                  <div style={{ fontFamily:T.sans, fontSize:15, fontWeight:700, color:'#fff', marginBottom:4 }}>{a}</div>
-                  <div style={{ fontFamily:T.mono, fontSize:10, color:'rgba(255,255,255,0.6)' }}>{b}</div>
+                  <div style={{ fontFamily:T.sans, fontSize:'clamp(12px,2.5vw,15px)', fontWeight:700, color:'#fff', marginBottom:4 }}>{a}</div>
+                  <div style={{ fontFamily:T.mono, fontSize:9, color:'rgba(255,255,255,0.6)' }}>{b}</div>
                 </div>
               ))}
             </div>
@@ -904,6 +950,9 @@ export default function Landing() {
       .lift-card:hover .lift-img { transform: scale(1.08); }
       .feat-card { transition: all 0.4s cubic-bezier(0.16,1,0.3,1); }
       .feat-card:hover { transform: translateY(-5px); border-color: rgba(124,58,237,0.35) !important; box-shadow: 0 20px 50px rgba(0,0,0,0.35); }
+      @keyframes kenburns { 0% { transform: scale(1) translate(0,0) } 100% { transform: scale(1.15) translate(-2%,-2%) } }
+      .kenburns { animation: kenburns 20s ease-in-out infinite alternate; }
+      .kenburns-alt { animation-duration: 26s; animation-direction: alternate-reverse; }
       html { scroll-behavior: smooth; }
       @media (max-width: 1024px) {
         .hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; padding: 48px 24px 60px !important; }
@@ -920,6 +969,8 @@ export default function Landing() {
         .steps-grid { grid-template-columns: 1fr 1fr !important; }
         .usecases-grid { grid-template-columns: 1fr 1fr !important; }
         .stats-grid { grid-template-columns: 1fr 1fr !important; }
+        .stat-cell { border-right: none !important; }
+        .stat-cell:nth-child(odd) { border-right: 1px solid rgba(255,255,255,0.07) !important; }
         .nav-links { display: none !important; }
       }
       @media (max-width: 480px) {
