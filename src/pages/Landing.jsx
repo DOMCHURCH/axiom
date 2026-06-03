@@ -76,9 +76,8 @@ function Reveal({ children, delay = 0, y = 32, blur = true, scale = false, style
     <div ref={ref} style={{
       opacity: inView ? 1 : 0,
       transform: inView ? 'none' : `translateY(${y}px)${scale ? ' scale(0.96)' : ''}`,
-      filter: blur ? (inView ? 'blur(0)' : 'blur(8px)') : 'none',
-      transition: `opacity 0.9s ${EASE} ${delay}s, transform 1s ${EASE} ${delay}s, filter 0.9s ${EASE} ${delay}s`,
-      willChange: 'opacity, transform, filter',
+      transition: `opacity 0.8s ${EASE} ${delay}s, transform 0.9s ${EASE} ${delay}s`,
+      willChange: inView ? 'auto' : 'opacity, transform',
       ...style,
     }} {...props}>
       {children}
@@ -120,9 +119,8 @@ function Stagger({ children, step = 0.08, y = 28, style, className }) {
         <div key={i} style={{
           opacity: inView ? 1 : 0,
           transform: inView ? 'none' : `translateY(${y}px) scale(0.97)`,
-          filter: inView ? 'blur(0)' : 'blur(6px)',
-          transition: `opacity 0.8s ${EASE} ${i * step}s, transform 0.9s ${EASE} ${i * step}s, filter 0.8s ${EASE} ${i * step}s`,
-          willChange: 'opacity, transform',
+          transition: `opacity 0.8s ${EASE} ${i * step}s, transform 0.9s ${EASE} ${i * step}s`,
+          willChange: inView ? 'auto' : 'opacity, transform',
         }}>{child}</div>
       ))}
     </div>
@@ -209,7 +207,7 @@ function ReportMockup() {
   const min = Math.min(...sp), max = Math.max(...sp), range = max-min||1
   const pts = sp.map((v,i)=>`${(i/(sp.length-1))*280},${48-((v-min)/range)*44}`).join(' ')
   return (
-    <div style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(40px)', border: `1px solid ${T.border2}`, borderRadius: 20, overflow: 'hidden', boxShadow: '0 80px 160px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05), 0 0 100px rgba(124,58,237,0.12)', fontFamily: T.mono }}>
+    <div style={{ background: 'rgba(12,12,26,0.72)', backdropFilter: 'blur(10px)', border: `1px solid ${T.border2}`, borderRadius: 20, overflow: 'hidden', boxShadow: '0 80px 160px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05), 0 0 100px rgba(124,58,237,0.12)', fontFamily: T.mono }}>
       {/* Window chrome */}
       <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
         <div style={{ display: 'flex', gap: 6 }}>
@@ -516,7 +514,7 @@ function Features() {
 
         <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gridAutoRows:'auto', gap:10 }} className="bento-grid">
           {/* Big card — DCF */}
-          <Reveal delay={0} style={{ gridColumn:'span 4', background:'rgba(255,255,255,0.03)', backdropFilter:'blur(20px)', border:`1px solid ${T.border}`, borderRadius:20, padding:'40px 44px', position:'relative', overflow:'hidden' }}>
+          <Reveal delay={0} style={{ gridColumn:'span 4', background:'rgba(255,255,255,0.03)', border:`1px solid ${T.border}`, borderRadius:20, padding:'40px 44px', position:'relative', overflow:'hidden' }}>
             <div style={{ position:'absolute', top:-60, right:-60, width:300, height:300, borderRadius:'50%', background:'radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)', pointerEvents:'none' }} />
             <div style={{ fontFamily:T.mono, fontSize:9, color:T.violet, letterSpacing:2, textTransform:'uppercase', marginBottom:14 }}>01 — Valuation Engine</div>
             <h3 style={{ fontFamily:T.sans, fontSize:28, fontWeight:800, color:T.text, margin:'0 0 12px', letterSpacing:'-0.03em' }}>DCF + Monte Carlo</h3>
@@ -529,7 +527,7 @@ function Features() {
           </Reveal>
 
           {/* Altman Z */}
-          <Reveal delay={0.05} style={{ gridColumn:'span 2', background:'rgba(255,255,255,0.03)', backdropFilter:'blur(20px)', border:`1px solid ${T.border}`, borderRadius:20, padding:'32px 28px', position:'relative', overflow:'hidden' }}>
+          <Reveal delay={0.05} style={{ gridColumn:'span 2', background:'rgba(255,255,255,0.03)', border:`1px solid ${T.border}`, borderRadius:20, padding:'32px 28px', position:'relative', overflow:'hidden' }}>
             <div style={{ position:'absolute', bottom:-30, right:-30, width:120, height:120, borderRadius:'50%', background:'radial-gradient(circle, rgba(239,68,68,0.12) 0%, transparent 70%)' }} />
             <div style={{ fontFamily:T.mono, fontSize:9, color:'rgba(239,68,68,0.8)', letterSpacing:2, textTransform:'uppercase', marginBottom:14 }}>02 — Risk Score</div>
             <h3 style={{ fontFamily:T.sans, fontSize:22, fontWeight:800, color:T.text, margin:'0 0 10px' }}>Altman Z-Score</h3>
@@ -555,7 +553,7 @@ function Features() {
           </Reveal>
 
           {/* Comps */}
-          <Reveal delay={0.10} style={{ gridColumn:'span 2', background:'rgba(255,255,255,0.03)', backdropFilter:'blur(20px)', border:`1px solid ${T.border}`, borderRadius:20, padding:'32px 28px' }}>
+          <Reveal delay={0.10} style={{ gridColumn:'span 2', background:'rgba(255,255,255,0.03)', border:`1px solid ${T.border}`, borderRadius:20, padding:'32px 28px' }}>
             <div style={{ fontFamily:T.mono, fontSize:9, color:T.blue, letterSpacing:2, textTransform:'uppercase', marginBottom:14 }}>04 — Benchmarking</div>
             <h3 style={{ fontFamily:T.sans, fontSize:22, fontWeight:800, color:T.text, margin:'0 0 10px' }}>Comps Table</h3>
             <p style={{ fontSize:12, color:T.text2, lineHeight:1.7 }}>Comparable company analysis — EV/EBITDA, P/E, revenue growth, margins across 3 sector peers.</p>
@@ -567,7 +565,7 @@ function Features() {
           </Reveal>
 
           {/* Piotroski */}
-          <Reveal delay={0.12} style={{ gridColumn:'span 2', background:'rgba(255,255,255,0.03)', backdropFilter:'blur(20px)', border:`1px solid ${T.border}`, borderRadius:20, padding:'32px 28px' }}>
+          <Reveal delay={0.12} style={{ gridColumn:'span 2', background:'rgba(255,255,255,0.03)', border:`1px solid ${T.border}`, borderRadius:20, padding:'32px 28px' }}>
             <div style={{ fontFamily:T.mono, fontSize:9, color:T.violet, letterSpacing:2, textTransform:'uppercase', marginBottom:14 }}>05 — Quality</div>
             <h3 style={{ fontFamily:T.sans, fontSize:22, fontWeight:800, color:T.text, margin:'0 0 10px' }}>Piotroski F-Score</h3>
             <p style={{ fontSize:12, color:T.text2, lineHeight:1.7 }}>9-point quality screen across profitability, leverage, and efficiency.</p>
@@ -653,8 +651,8 @@ function Showcase() {
           <h2 style={{ fontFamily:T.sans, fontSize:'clamp(30px,6vw,76px)', fontWeight:900, color:T.text, letterSpacing:'-0.05em', margin:0, lineHeight:0.95 }}>Every number.<br />Beautifully rendered.</h2>
         </div>
 
-        {/* The scaling hero image */}
-        <div style={{ position:'relative', zIndex:1, width:'min(1000px, 94vw)', transform:`scale(${scale}) translateY(${translateY}px)`, opacity, borderRadius:radius, overflow:'hidden', boxShadow:`0 ${40+t*60}px ${100+t*80}px rgba(0,0,0,0.7), 0 0 ${t*120}px rgba(124,58,237,${t*0.25})`, border:'1px solid rgba(255,255,255,0.1)', willChange:'transform, opacity' }}>
+        {/* The scaling hero image — static shadow (animating box-shadow blur repaints every frame) */}
+        <div style={{ position:'relative', zIndex:1, width:'min(1000px, 94vw)', transform:`scale(${scale}) translateY(${translateY}px)`, opacity, borderRadius:radius, overflow:'hidden', boxShadow:'0 60px 140px rgba(0,0,0,0.7), 0 0 90px rgba(124,58,237,0.18)', border:'1px solid rgba(255,255,255,0.1)', willChange:'transform, opacity' }}>
           <img src="https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=1400&h=820&fit=crop&q=85" alt="Financial dashboard" loading="lazy" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
           <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(124,58,237,0.18), rgba(6,182,212,0.1))' }} />
           {/* Caption overlay reveals near the end */}
@@ -724,7 +722,7 @@ function DemoSection() {
             </div>
           ))}
         </div>
-        <div style={{ background:'rgba(255,255,255,0.03)', backdropFilter:'blur(20px)', border:`1px solid ${T.border}`, borderRadius:16, overflow:'hidden', fontFamily:T.mono, fontSize:11 }}>
+        <div style={{ background:'rgba(255,255,255,0.03)', border:`1px solid ${T.border}`, borderRadius:16, overflow:'hidden', fontFamily:T.mono, fontSize:11 }}>
           <div style={{ background:'rgba(255,255,255,0.03)', padding:'12px 18px', borderBottom:`1px solid ${T.border}`, display:'flex', alignItems:'center', gap:8 }}>
             <div style={{ display:'flex', gap:5 }}>
               <div style={{ width:9, height:9, borderRadius:'50%', background:'rgba(255,95,87,0.5)' }} />
@@ -784,7 +782,7 @@ function Pricing({ navigate }) {
 
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }} className="pricing-grid">
           {/* Free */}
-          <Reveal delay={0} style={{ background:'rgba(255,255,255,0.03)', backdropFilter:'blur(20px)', border:`1px solid ${T.border}`, borderRadius:22, padding:'44px 40px', transition:'border-color 0.2s, box-shadow 0.2s' }} onMouseEnter={e=>{e.currentTarget.style.borderColor=T.border2;e.currentTarget.style.boxShadow='0 20px 60px rgba(0,0,0,0.3)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.boxShadow='none'}}>
+          <Reveal delay={0} style={{ background:'rgba(255,255,255,0.03)', border:`1px solid ${T.border}`, borderRadius:22, padding:'44px 40px', transition:'border-color 0.2s, box-shadow 0.2s' }} onMouseEnter={e=>{e.currentTarget.style.borderColor=T.border2;e.currentTarget.style.boxShadow='0 20px 60px rgba(0,0,0,0.3)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.boxShadow='none'}}>
             <div style={{ fontFamily:T.mono, fontSize:10, color:T.text3, textTransform:'uppercase', letterSpacing:2, marginBottom:16 }}>Free account</div>
             <div style={{ fontFamily:T.mono, fontSize:60, fontWeight:800, color:T.text, lineHeight:1, marginBottom:6 }}>$0</div>
             <div style={{ fontSize:13, color:T.text2, marginBottom:36, lineHeight:1.65 }}>Your research workspace. Save reports, revisit anytime — no card, no API keys.</div>
@@ -872,7 +870,7 @@ function FAQ() {
 function FinalCTA({ navigate }) {
   const { isSignedIn } = useUser()
   return (
-    <section style={{ position:'relative', overflow:'hidden', textAlign:'center', padding:'160px 24px' }}>
+    <section style={{ position:'relative', overflow:'hidden', textAlign:'center', padding:'120px 24px' }}>
       {/* Full gradient background */}
       <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, #0d0520 0%, #05071a 40%, #020612 100%)' }} />
       <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:900, height:600, borderRadius:'50%', background:'radial-gradient(ellipse, rgba(124,58,237,0.2) 0%, rgba(37,99,235,0.1) 40%, transparent 70%)', pointerEvents:'none' }} />
@@ -1003,6 +1001,10 @@ export default function Landing() {
       .kenburns { animation: kenburns 20s ease-in-out infinite alternate; }
       .kenburns-alt { animation-duration: 26s; animation-direction: alternate-reverse; }
       html { scroll-behavior: smooth; }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+        html { scroll-behavior: auto !important; }
+      }
       @media (max-width: 1024px) {
         .hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; padding: 48px 24px 60px !important; }
         .demo-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
