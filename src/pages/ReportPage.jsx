@@ -2,6 +2,27 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import ResearchReport from '../components/ResearchReport.jsx'
 
+async function exportReportPDF(ticker) {
+  const { default: html2canvas } = await import('html2canvas')
+  const { default: jsPDF } = await import('jspdf')
+  const el = document.getElementById('axiom-report')
+  if (!el) return
+  const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#0a0a0a', logging: false })
+  const imgData = canvas.toDataURL('image/png')
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: 'a4' })
+  const pageW = pdf.internal.pageSize.getWidth()
+  const pageH = pdf.internal.pageSize.getHeight()
+  const ratio = pageW / canvas.width
+  const scaledH = canvas.height * ratio
+  let y = 0
+  while (y < scaledH) {
+    if (y > 0) pdf.addPage()
+    pdf.addImage(imgData, 'PNG', 0, -y, pageW, scaledH)
+    y += pageH
+  }
+  pdf.save(`AXIOM_${ticker}_${new Date().toISOString().slice(0, 10)}.pdf`)
+}
+
 const T = {
   bg: '#0a0a0a', panel: '#111', border: '#1e1e1e',
   accent: '#38bdf8', muted: '#6b7280', red: '#f87171',
@@ -33,13 +54,24 @@ export default function ReportPage() {
           <span style={{ fontFamily: T.mono, color: T.accent, fontWeight: 700, fontSize: 14 }}>AXIOM</span>
           <span style={{ color: T.muted, fontSize: 13 }}>Shared Report</span>
         </div>
-        <Link to="/" style={{
-          color: T.accent, fontSize: 13, textDecoration: 'none',
-          fontFamily: T.mono, padding: '6px 14px',
-          border: `1px solid ${T.accent}40`, borderRadius: 4,
-        }}>
-          Generate Your Own →
-        </Link>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {report && (
+            <button onClick={() => exportReportPDF(report.ticker)} style={{
+              color: T.accent, fontSize: 13, background: T.accent + '12',
+              fontFamily: T.mono, padding: '6px 14px', cursor: 'pointer',
+              border: `1px solid ${T.accent}40`, borderRadius: 4,
+            }}>
+              ⤓ Export PDF
+            </button>
+          )}
+          <Link to="/" style={{
+            color: T.accent, fontSize: 13, textDecoration: 'none',
+            fontFamily: T.mono, padding: '6px 14px',
+            border: `1px solid ${T.accent}40`, borderRadius: 4,
+          }}>
+            Generate Your Own →
+          </Link>
+        </div>
       </div>
 
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '32px 16px' }}>
@@ -60,7 +92,9 @@ export default function ReportPage() {
             <div style={{ marginBottom: 8, color: T.muted, fontSize: 12, fontFamily: T.mono }}>
               Generated {new Date(report.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
             </div>
-            <ResearchReport data={report.result} ticker={report.ticker} />
+            <div id="axiom-report">
+              <ResearchReport data={report.result} ticker={report.ticker} />
+            </div>
           </>
         )}
       </div>
