@@ -1,6 +1,27 @@
 // AXIOM — Investor-grade PDF export using jsPDF vector text/shapes
 // No html2canvas — pure vector output
 
+import { runDCF, monteCarloDCF } from './dcf.js'
+
+// Normalize a rate the AI may have returned as a whole-number percent
+function normRate(v, fallback) {
+  if (v == null || isNaN(v)) return fallback
+  return Math.abs(v) > 1 ? v / 100 : v
+}
+
+// Convert bare decimals in AI prose to formatted percentages (matches web report)
+function fixProse(text) {
+  if (!text || typeof text !== 'string') return text
+  return text.replace(/\b(0\.\d{1,4})\b/g, (m, num) => {
+    const val = parseFloat(num)
+    if (val >= 0.01 && val <= 0.99) {
+      const p = val * 100
+      return (p % 1 === 0 ? p.toFixed(0) : p.toFixed(1)) + '%'
+    }
+    return m
+  })
+}
+
 export async function exportReportPDF(ticker, report, financials) {
   const { default: jsPDF } = await import('jspdf')
 
@@ -124,14 +145,53 @@ export async function exportReportPDF(ticker, report, financials) {
   // ── Extract data ───────────────────────────────────────────────────────────
   const s = report?.structured || {}
   const rec = s.recommendation || 'HOLD'
-  const moat = s.moat || 'NARROW'
+  const moat = s.moatRating || s.moat || 'NARROW'
   const targetPrice = s.targetPrice
-  const dcf = s.dcf || {}
-  const comps = s.comps || []
   const risks = s.risks || []
   const bulls = s.bullCase || []
   const bears = s.bearCase || []
   const f = financials || {}
+
+  // ── Compute the DCF here (same logic as the on-screen report) ──────────────
+  // The structured AI output does NOT contain a computed DCF — it only carries
+  // assumptions. We derive intrinsic value, EV, terminal value, etc. ourselves.
+  const fcf = f.fcf || (f.operatingCF ? f.operatingCF * 0.85 : null)
+  const dcfIn = {
+    fcf,
+    nearTermGrowth: normRate(s.dcfAssumptions?.nearTermGrowth, 0.08),
+    longTermGrowth: normRate(s.dcfAssumptions?.longTermGrowth, 0.05),
+    terminalGrowth: normRate(s.dcfAssumptions?.terminalGrowthRate, 0.025),
+    wacc: normRate(s.dcfAssumptions?.wacc, 0.09),
+    shares: f.shares,
+    netDebt: f.netDebt,
+  }
+  const dcfRes = fcf ? runDCF(dcfIn) : null
+  const currentPrice = f.price ?? s.currentPrice ?? null
+  const mc = fcf && f.shares ? monteCarloDCF(dcfIn, currentPrice) : null
+
+  // Shape the computed DCF into the fields the renderer below expects
+  const dcf = dcfRes ? {
+    intrinsicValue: dcfRes.intrinsicValue,
+    enterpriseValue: dcfRes.enterpriseValue,
+    terminalValuePct: dcfRes.tvAsPctOfEV != null ? dcfRes.tvAsPctOfEV * 100 : null,
+    projectedFCFs: dcfRes.projectedFCF,
+    assumptions: {
+      wacc: dcfIn.wacc,
+      nearTermGrowth: dcfIn.nearTermGrowth,
+      longTermGrowth: dcfIn.longTermGrowth,
+      terminalGrowth: dcfIn.terminalGrowth,
+    },
+  } : {}
+
+  // ── Normalize comps to canonical field names (peRatio/revenueGrowth) ───────
+  const comps = (s.comps || []).map(c => ({
+    ticker: c.ticker,
+    name: c.name,
+    evEbitda: c.evEbitda != null && c.evEbitda > 0 && c.evEbitda < 200 ? c.evEbitda : null,
+    pe: (c.peRatio ?? c.pe) != null && (c.peRatio ?? c.pe) > 0 && (c.peRatio ?? c.pe) < 500 ? (c.peRatio ?? c.pe) : null,
+    revGrowth: normRate(c.revenueGrowth ?? c.revGrowth, null),
+    grossMargin: (c.grossMargin != null) ? (Math.abs(c.grossMargin) > 1 ? c.grossMargin / 100 : c.grossMargin) : null,
+  }))
 
   const recColor = { BUY: C.green, SELL: C.red, HOLD: C.amber }[rec] || C.amber
   const upside = targetPrice && f.price ? ((targetPrice - f.price) / f.price * 100).toFixed(1) : null
@@ -281,7 +341,7 @@ export async function exportReportPDF(ticker, report, financials) {
     pdf.setFont('helvetica', 'normal')
     pdf.setFontSize(9)
     setTxt(C.dark)
-    const lines = pdf.splitTextToSize(s.executiveSummary, CW)
+    const lines = pdf.splitTextToSize(fixProse(s.executiveSummary), CW)
     pdf.text(lines, MARGIN, y)
     y += lines.length * 4.5 + 4
   }
@@ -325,7 +385,7 @@ export async function exportReportPDF(ticker, report, financials) {
     pdf.setFont('helvetica', 'normal')
     pdf.setFontSize(9)
     setTxt(C.dark)
-    const lines = pdf.splitTextToSize(s.investmentThesis, CW)
+    const lines = pdf.splitTextToSize(fixProse(s.investmentThesis), CW)
     pdf.text(lines, MARGIN, y)
     y += lines.length * 4.5 + 4
   }
@@ -363,7 +423,7 @@ export async function exportReportPDF(ticker, report, financials) {
     setTxt(C.green)
     pdf.text('▸', bullX, bullY)
     setTxt(C.dark)
-    const lines = pdf.splitTextToSize(String(pt), caseW - 6)
+    const lines = pdf.splitTextToSize(fixProse(String(pt)), caseW - 6)
     pdf.text(lines, bullX + 4, bullY)
     bullY += lines.length * 4 + 2
   })
@@ -376,7 +436,7 @@ export async function exportReportPDF(ticker, report, financials) {
     setTxt(C.red)
     pdf.text('▸', bearX, bearY)
     setTxt(C.dark)
-    const lines = pdf.splitTextToSize(String(pt), caseW - 6)
+    const lines = pdf.splitTextToSize(fixProse(String(pt)), caseW - 6)
     pdf.text(lines, bearX + 4, bearY)
     bearY += lines.length * 4 + 2
   })
@@ -402,6 +462,19 @@ export async function exportReportPDF(ticker, report, financials) {
     metricBox(sx, y, statW, statH, stat[0], stat[1], stat[2])
   })
   y += statH + 4
+
+  // Context note when intrinsic value sits well below market price (common for
+  // high-multiple growth names whose price embeds growth beyond the 8Y horizon)
+  if (currentPrice && dcf.intrinsicValue && dcf.intrinsicValue < currentPrice * 0.75) {
+    checkPage(14)
+    const note = `Note: DCF intrinsic value (${fmt.price(dcf.intrinsicValue)}) sits below the market price (${fmt.price(currentPrice)}), typical for high-multiple growth stocks where the market prices in long-duration growth beyond this 8-year model. The 12-month target${targetPrice ? ` (${fmt.price(targetPrice)})` : ''} reflects comps-based and growth-adjusted valuation.`
+    pdf.setFont('helvetica', 'italic')
+    pdf.setFontSize(7.5)
+    setTxt(C.muted)
+    const noteLines = pdf.splitTextToSize(note, CW)
+    pdf.text(noteLines, MARGIN, y)
+    y += noteLines.length * 3.4 + 4
+  }
 
   // Assumptions mini-table
   if (dcf.assumptions) {
@@ -485,7 +558,7 @@ export async function exportReportPDF(ticker, report, financials) {
       pdf.setFont('helvetica', 'normal')
       pdf.setFontSize(7.5)
       setTxt(C.muted)
-      const descLines = pdf.splitTextToSize(risk.description, CW - 19)
+      const descLines = pdf.splitTextToSize(fixProse(risk.description), CW - 19)
       pdf.text(descLines, MARGIN + 19, y + 7)
       y += 7 + descLines.length * 3.2 + 2
     } else {
@@ -498,11 +571,12 @@ export async function exportReportPDF(ticker, report, financials) {
   // ── Analyst Conviction ─────────────────────────────────────────────────────
   checkPage(20)
   sectionLabel('ANALYST CONVICTION')
-  if (s.analystConviction) {
+  const conviction = s.analystNote || s.analystConviction
+  if (conviction) {
     pdf.setFont('helvetica', 'italic')
     pdf.setFontSize(9)
     setTxt(C.dark)
-    const lines = pdf.splitTextToSize(`"${s.analystConviction}"`, CW)
+    const lines = pdf.splitTextToSize(`"${fixProse(conviction)}"`, CW)
     pdf.text(lines, MARGIN, y)
     y += lines.length * 4.5 + 4
   }
