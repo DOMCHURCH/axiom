@@ -5,83 +5,96 @@ import { SignInButton, SignUpButton, UserButton, useUser } from '@clerk/clerk-re
 
 // ─── Design Tokens ───────────────────────────────────────────────────────────
 const T = {
-  bg:       '#02040a',
-  bg2:      '#060912',
-  panel:    '#0a0e1a',
-  panelHov: '#0d1220',
-  border:   '#161d35',
-  border2:  '#1f2d50',
-  accent:   '#3b82f6',
-  accentLo: '#3b82f608',
-  accentBd: '#3b82f630',
-  accentMid:'#3b82f660',
-  cyan:     '#06b6d4',
-  purple:   '#8b5cf6',
-  green:    '#10b981',
-  greenLo:  '#10b98115',
-  red:      '#ef4444',
-  gold:     '#f59e0b',
-  text:     '#f8faff',
-  text2:    '#8b9dc3',
-  text3:    '#4d6080',
-  muted:    '#2d3f60',
-  muted2:   '#5d7aa0',
-  mono:     "'IBM Plex Mono', 'Courier New', monospace",
-  sans:     "'Inter', system-ui, sans-serif",
+  bg:      '#04040a',
+  bg2:     '#07071200',
+  panel:   'rgba(255,255,255,0.03)',
+  panelSolid: '#0c0c1a',
+  border:  'rgba(255,255,255,0.07)',
+  border2: 'rgba(255,255,255,0.12)',
+  violet:  '#7c3aed',
+  blue:    '#2563eb',
+  cyan:    '#06b6d4',
+  green:   '#10b981',
+  red:     '#ef4444',
+  gold:    '#f59e0b',
+  text:    '#ffffff',
+  text2:   '#94a3b8',
+  text3:   '#475569',
+  mono:    "'IBM Plex Mono', monospace",
+  sans:    "'Inter', system-ui, sans-serif",
+  grad:    'linear-gradient(135deg, #7c3aed, #2563eb, #06b6d4)',
+  gradHover: 'linear-gradient(135deg, #6d28d9, #1d4ed8, #0891b2)',
 }
 
 const clerkEnabled = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
-function useInView(options = {}) {
+function useInView(threshold = 0.1) {
   const ref = useRef(null)
   const [inView, setInView] = useState(false)
   useEffect(() => {
-    const obs = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) { setInView(true); obs.disconnect() }
-    }, { threshold: 0.08, ...options })
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setInView(true); obs.disconnect() } }, { threshold })
     if (ref.current) obs.observe(ref.current)
     return () => obs.disconnect()
   }, [])
   return [ref, inView]
 }
 
-function Reveal({ children, delay = 0, style, ...props }) {
-  const [ref, inView] = useInView()
+function Reveal({ children, delay = 0, y = 28, style, ...props }) {
+  const [ref, inView] = useInView(0.08)
   return (
-    <div ref={ref} style={{
-      opacity: inView ? 1 : 0,
-      transform: inView ? 'translateY(0)' : 'translateY(32px)',
-      transition: `opacity 0.7s ease ${delay}s, transform 0.7s ease ${delay}s`,
-      ...style,
-    }} {...props}>
+    <div ref={ref} style={{ opacity: inView ? 1 : 0, transform: inView ? 'none' : `translateY(${y}px)`, transition: `opacity 0.7s ease ${delay}s, transform 0.7s cubic-bezier(0.16,1,0.3,1) ${delay}s`, ...style }} {...props}>
       {children}
     </div>
   )
 }
 
 function Spinner() {
-  return <div style={{ display: 'inline-block', width: 13, height: 13, border: `2px solid ${T.accent}30`, borderTopColor: T.accent, borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+  return <div style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
 }
 
-// ─── Ticker Strip ─────────────────────────────────────────────────────────────
+function GradientText({ children, style }) {
+  return <span style={{ background: T.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', ...style }}>{children}</span>
+}
+
+function GradBtn({ children, onClick, style, ...props }) {
+  const [hov, setHov] = useState(false)
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: hov ? T.gradHover : T.grad,
+        color: '#fff', border: 'none', borderRadius: 10,
+        fontFamily: T.mono, fontSize: 13, fontWeight: 700,
+        padding: '14px 28px', cursor: 'pointer',
+        boxShadow: hov ? '0 8px 40px rgba(124,58,237,0.5), 0 2px 12px rgba(37,99,235,0.3)' : '0 4px 24px rgba(124,58,237,0.35)',
+        transform: hov ? 'translateY(-2px) scale(1.02)' : 'none',
+        transition: 'all 0.2s cubic-bezier(0.16,1,0.3,1)',
+        letterSpacing: 0.4, ...style,
+      }} {...props}
+    >{children}</button>
+  )
+}
+
+// ─── Ticker strip ─────────────────────────────────────────────────────────────
 const TICKERS = [
   { sym: 'AAPL', chg: +1.24, price: 213.48 }, { sym: 'NVDA', chg: +3.81, price: 875.20 },
   { sym: 'MSFT', chg: -0.42, price: 418.73 }, { sym: 'GOOGL', chg: +0.97, price: 182.91 },
   { sym: 'META', chg: +2.13, price: 521.34 }, { sym: 'AMZN', chg: -0.88, price: 195.67 },
   { sym: 'TSLA', chg: -1.54, price: 248.10 }, { sym: 'JPM', chg: +0.66, price: 209.84 },
-  { sym: 'BRK.B', chg: +0.31, price: 437.22 }, { sym: 'NFLX', chg: +1.78, price: 684.30 },
+  { sym: 'NFLX', chg: +1.78, price: 684.30 }, { sym: 'AMD', chg: -2.11, price: 163.48 },
 ]
-
 function TickerStrip() {
   const items = [...TICKERS, ...TICKERS, ...TICKERS]
   return (
-    <div style={{ overflow: 'hidden', padding: '10px 0', WebkitMaskImage: 'linear-gradient(90deg, transparent, black 8%, black 92%, transparent)', maskImage: 'linear-gradient(90deg, transparent, black 8%, black 92%, transparent)' }}>
+    <div style={{ overflow: 'hidden', padding: '12px 0', borderTop: `1px solid ${T.border}`, borderBottom: `1px solid ${T.border}`, background: 'rgba(255,255,255,0.02)', WebkitMaskImage: 'linear-gradient(90deg,transparent,black 6%,black 94%,transparent)', maskImage: 'linear-gradient(90deg,transparent,black 6%,black 94%,transparent)' }}>
       <div style={{ display: 'flex', animation: 'ticker 50s linear infinite', width: 'max-content' }}>
         {items.map((t, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 28px', whiteSpace: 'nowrap' }}>
-            <span style={{ fontFamily: T.mono, fontSize: 11, fontWeight: 700, color: T.text3, letterSpacing: 1 }}>{t.sym}</span>
-            <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2 }}>${t.price.toFixed(2)}</span>
-            <span style={{ fontFamily: T.mono, fontSize: 10, color: t.chg >= 0 ? T.green : T.red }}>{t.chg >= 0 ? '+' : ''}{t.chg.toFixed(2)}%</span>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 28px', whiteSpace: 'nowrap', borderRight: `1px solid ${T.border}` }}>
+            <span style={{ fontFamily: T.mono, fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: 1 }}>{t.sym}</span>
+            <span style={{ fontFamily: T.mono, fontSize: 11, color: T.text3 }}>${t.price.toFixed(2)}</span>
+            <span style={{ fontFamily: T.mono, fontSize: 10, color: t.chg >= 0 ? T.green : T.red, fontWeight: 700 }}>{t.chg >= 0 ? '▲' : '▼'} {Math.abs(t.chg).toFixed(2)}%</span>
           </div>
         ))}
       </div>
@@ -89,117 +102,99 @@ function TickerStrip() {
   )
 }
 
-// ─── Report Mockup (compact) ──────────────────────────────────────────────────
+// ─── Report Mockup ────────────────────────────────────────────────────────────
 function ReportMockup() {
-  const sp = [142, 148, 145, 152, 158, 155, 161, 168, 165, 172, 178, 181]
-  const min = Math.min(...sp), max = Math.max(...sp), range = max - min || 1
-  const pts = sp.map((v, i) => `${(i / (sp.length - 1)) * 200},${36 - ((v - min) / range) * 36}`).join(' ')
-
+  const sp = [142,148,145,152,158,155,161,168,165,172,178,181]
+  const min = Math.min(...sp), max = Math.max(...sp), range = max-min||1
+  const pts = sp.map((v,i)=>`${(i/(sp.length-1))*280},${48-((v-min)/range)*44}`).join(' ')
   return (
-    <div style={{
-      background: 'linear-gradient(145deg, #0d1428 0%, #091022 100%)',
-      border: `1px solid ${T.border2}`,
-      borderRadius: 16,
-      overflow: 'hidden',
-      boxShadow: `0 0 0 1px ${T.border}, 0 60px 120px #00000080, 0 0 80px ${T.accent}0a`,
-      fontFamily: T.mono,
-    }}>
-      {/* Top bar */}
+    <div style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(40px)', border: `1px solid ${T.border2}`, borderRadius: 20, overflow: 'hidden', boxShadow: '0 80px 160px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05), 0 0 100px rgba(124,58,237,0.12)', fontFamily: T.mono }}>
+      {/* Window chrome */}
       <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ display: 'flex', gap: 5 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff5f5640' }} />
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ffbd2e40' }} />
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#27c93f40' }} />
-          </div>
-          <span style={{ fontSize: 10, color: T.text3, letterSpacing: 0.5 }}>axiom / research / NVDA</span>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f57' }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#febc2e' }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28c840' }} />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#10b98118', border: '1px solid #10b98130', borderRadius: 4, padding: '3px 8px' }}>
-          <div style={{ width: 5, height: 5, borderRadius: '50%', background: T.green, boxShadow: `0 0 6px ${T.green}` }} />
-          <span style={{ fontSize: 9, color: T.green, fontWeight: 700, letterSpacing: 1 }}>BUY</span>
+        <span style={{ fontSize: 10, color: T.text3, letterSpacing: 0.5 }}>axiom — NVDA research report</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 4, padding: '3px 9px' }}>
+          <div style={{ width: 5, height: 5, borderRadius: '50%', background: T.green, boxShadow: `0 0 8px ${T.green}` }} />
+          <span style={{ fontSize: 9, color: T.green, fontWeight: 700, letterSpacing: 1.2 }}>BUY</span>
         </div>
       </div>
-
       {/* Header */}
-      <div style={{ padding: '16px 18px 12px', borderBottom: `1px solid ${T.border}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: T.text, letterSpacing: -0.5 }}>NVDA</div>
-            <div style={{ fontSize: 9, color: T.text3, marginTop: 2 }}>NVIDIA Corporation · Generated 47s · FY 2024</div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: T.green }}>$980</div>
-            <div style={{ fontSize: 9, color: T.muted2, marginTop: 2 }}>+11.9% upside</div>
-          </div>
+      <div style={{ padding: '20px 22px 16px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: -0.5, marginBottom: 4 }}>NVDA</div>
+          <div style={{ fontSize: 10, color: T.text3 }}>NVIDIA Corporation · FY 2024 · Generated in 47s</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 20, fontWeight: 700, background: T.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>$980</div>
+          <div style={{ fontSize: 10, color: T.text3, marginTop: 2 }}>+11.9% target upside</div>
         </div>
       </div>
-
-      {/* Metrics grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderBottom: `1px solid ${T.border}` }}>
-        {[
-          { l: 'Revenue', v: '$60.9B', s: '+122%', c: T.green },
-          { l: 'EBITDA Mgn', v: '62.1%', s: '+18pp', c: T.green },
-          { l: 'FCF', v: '$27.0B', s: '44.3%', c: T.text2 },
-          { l: 'P/E', v: '34.2x', s: 'vs 28.1x', c: T.gold },
-        ].map((m, i) => (
-          <div key={i} style={{ padding: '10px 12px', borderRight: i < 3 ? `1px solid ${T.border}` : 'none' }}>
-            <div style={{ fontSize: 8, color: T.text3, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>{m.l}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{m.v}</div>
-            <div style={{ fontSize: 8, color: m.c, marginTop: 2 }}>{m.s}</div>
+      {/* Metrics */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', borderBottom: `1px solid ${T.border}` }}>
+        {[{ l:'Revenue', v:'$60.9B', s:'+122%', c:T.green },{ l:'EBITDA Mgn', v:'62.1%', s:'+18pp', c:T.green },{ l:'Free CF', v:'$27.0B', s:'44.3% mgn', c:T.cyan },{ l:'P/E Ratio', v:'34.2x', s:'vs 28.1x peers', c:T.gold }].map((m,i)=>(
+          <div key={i} style={{ padding:'12px 14px', borderRight: i<3?`1px solid ${T.border}`:'none' }}>
+            <div style={{ fontSize: 8, color: T.text3, textTransform:'uppercase', letterSpacing:0.8, marginBottom:5 }}>{m.l}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>{m.v}</div>
+            <div style={{ fontSize: 9, color: m.c, marginTop:3, fontWeight:600 }}>{m.s}</div>
           </div>
         ))}
       </div>
-
-      {/* DCF + Sparkline */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: `1px solid ${T.border}` }}>
-        <div style={{ padding: '12px 14px', borderRight: `1px solid ${T.border}` }}>
-          <div style={{ fontSize: 8, color: T.accent, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 8 }}>DCF Model</div>
-          {[['WACC', '9.2%'], ['Terminal Growth', '2.5%'], ['Intrinsic Value', '$946']].map(([k, v]) => (
-            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-              <span style={{ fontSize: 9, color: T.text3 }}>{k}</span>
-              <span style={{ fontSize: 9, color: T.text, fontWeight: 600 }}>{v}</span>
+      {/* DCF + chart */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1.2fr', borderBottom:`1px solid ${T.border}` }}>
+        <div style={{ padding:'14px 16px', borderRight:`1px solid ${T.border}` }}>
+          <div style={{ fontSize:9, color:T.violet, textTransform:'uppercase', letterSpacing:1.5, marginBottom:10 }}>DCF Model</div>
+          {[['WACC','9.2%'],['Terminal Grw.','2.5%'],['Bear (P10)','$840'],['Intrinsic','$946'],['Bull (P90)','$1,140']].map(([k,v])=>(
+            <div key={k} style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+              <span style={{ fontSize:9, color:T.text3 }}>{k}</span>
+              <span style={{ fontSize:9, color:T.text, fontWeight:600 }}>{v}</span>
             </div>
           ))}
-          <div style={{ marginTop: 8, height: 3, background: T.border, borderRadius: 2 }}>
-            <div style={{ width: '72%', height: '100%', background: `linear-gradient(90deg, ${T.green}, ${T.cyan})`, borderRadius: 2 }} />
+          <div style={{ marginTop:10, height:3, background:'rgba(255,255,255,0.06)', borderRadius:2 }}>
+            <div style={{ width:'72%', height:'100%', background:T.grad, borderRadius:2 }} />
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
-            <span style={{ fontSize: 7, color: T.text3 }}>P10 $840</span>
-            <span style={{ fontSize: 7, color: T.text3 }}>P90 $1,140</span>
+          <div style={{ display:'flex', justifyContent:'space-between', marginTop:3 }}>
+            <span style={{ fontSize:7, color:T.text3 }}>P10</span>
+            <span style={{ fontSize:7, color:T.text3 }}>P90</span>
           </div>
         </div>
-        <div style={{ padding: '12px 14px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontSize: 8, color: T.text3, textTransform: 'uppercase', letterSpacing: 0.8 }}>Revenue 12M</span>
-            <span style={{ fontSize: 9, color: T.green, fontWeight: 700 }}>+122%</span>
+        <div style={{ padding:'14px 16px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+            <span style={{ fontSize:9, color:T.text3, textTransform:'uppercase', letterSpacing:0.8 }}>Revenue Trend</span>
+            <span style={{ fontSize:10, color:T.green, fontWeight:700 }}>+122% YoY</span>
           </div>
-          <svg width="100%" height="36" viewBox="0 0 200 36" style={{ display: 'block' }}>
+          <svg width="100%" height="48" viewBox="0 0 280 48" preserveAspectRatio="none" style={{ display:'block' }}>
             <defs>
-              <linearGradient id="sg" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor={T.green} stopOpacity="0.6" />
+              <linearGradient id="chartGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor={T.violet} />
+                <stop offset="50%" stopColor={T.blue} />
                 <stop offset="100%" stopColor={T.cyan} />
               </linearGradient>
+              <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={T.violet} stopOpacity="0.2" />
+                <stop offset="100%" stopColor={T.violet} stopOpacity="0" />
+              </linearGradient>
             </defs>
-            <polyline points={pts} fill="none" stroke="url(#sg)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <polygon points={`0,48 ${pts} 280,48`} fill="url(#chartFill)" />
+            <polyline points={pts} fill="none" stroke="url(#chartGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <div style={{ marginTop: 10 }}>
-            <div style={{ fontSize: 8, color: T.text3, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Risk Flags</div>
-            {[['Export controls', T.gold], ['Valuation premium', T.gold], ['Moat erosion', T.red]].map(([r, c]) => (
-              <div key={r} style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-                <div style={{ width: 4, height: 4, borderRadius: '50%', background: c, flexShrink: 0 }} />
-                <span style={{ fontSize: 8, color: T.text3 }}>{r}</span>
+          <div style={{ marginTop:12 }}>
+            <div style={{ fontSize:9, color:T.text3, textTransform:'uppercase', letterSpacing:0.8, marginBottom:7 }}>Key Risks</div>
+            {[['Competitive moat',T.red],['Export controls',T.gold],['Supply chain',T.text3]].map(([r,c])=>(
+              <div key={r} style={{ display:'flex', alignItems:'center', gap:6, marginBottom:5 }}>
+                <div style={{ width:5, height:5, borderRadius:'50%', background:c, flexShrink:0 }} />
+                <span style={{ fontSize:9, color:T.text3 }}>{r}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
-
-      {/* Analyst note */}
-      <div style={{ padding: '12px 14px' }}>
-        <div style={{ fontSize: 8, color: T.accent, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 }}>Analyst Note</div>
-        <div style={{ fontSize: 10, color: T.text2, lineHeight: 1.7, fontStyle: 'italic', fontFamily: T.sans }}>
-          "Data center delivered 217% growth to $47.5B. At 34.2x forward P/E vs. 62% EBITDA margins, premium justified. Initiating BUY, $980 target."
-        </div>
+      <div style={{ padding:'12px 16px' }}>
+        <div style={{ fontSize:9, color:T.violet, textTransform:'uppercase', letterSpacing:1.5, marginBottom:6 }}>Analyst Note</div>
+        <div style={{ fontSize:11, color:T.text2, lineHeight:1.7, fontStyle:'italic', fontFamily:T.sans }}>"Data center delivered 217% growth to $47.5B. At 34.2x forward P/E against 62% EBITDA margins, premium is justified. Initiating at <strong style={{color:T.green}}>BUY</strong> with $980 target."</div>
       </div>
     </div>
   )
@@ -210,49 +205,26 @@ function Nav({ navigate }) {
   const { isSignedIn } = useUser()
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 40)
+    const fn = () => setScrolled(window.scrollY > 30)
     window.addEventListener('scroll', fn)
     return () => window.removeEventListener('scroll', fn)
   }, [])
-
   return (
-    <nav style={{
-      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '0 32px', height: 56,
-      background: scrolled ? `${T.bg}ee` : 'transparent',
-      borderBottom: scrolled ? `1px solid ${T.border}` : '1px solid transparent',
-      backdropFilter: scrolled ? 'blur(24px) saturate(160%)' : 'none',
-      transition: 'all 0.3s ease',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 40 }}>
-        <div style={{ fontFamily: T.mono, fontSize: 14, fontWeight: 700, color: T.text, letterSpacing: 6, cursor: 'pointer' }}>
-          AXIOM
-        </div>
-        <div className="nav-links" style={{ display: 'flex', gap: 28 }}>
-          {['Features', 'Pricing', 'FAQ'].map(item => (
-            <a key={item} href={`#${item.toLowerCase()}`}
-              style={{ fontFamily: T.sans, fontSize: 13, color: T.text3, textDecoration: 'none', transition: 'color 0.15s' }}
-              onMouseEnter={e => e.target.style.color = T.text2}
-              onMouseLeave={e => e.target.style.color = T.text3}
-            >{item}</a>
+    <nav style={{ position:'fixed', top:0, left:0, right:0, zIndex:200, height:60, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 40px', background: scrolled ? 'rgba(4,4,10,0.85)' : 'transparent', backdropFilter: scrolled ? 'blur(24px) saturate(150%)' : 'none', borderBottom: scrolled ? `1px solid ${T.border}` : '1px solid transparent', transition:'all 0.3s ease' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:40 }}>
+        <div style={{ fontFamily:T.mono, fontSize:15, fontWeight:700, letterSpacing:6, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', cursor:'pointer' }}>AXIOM</div>
+        <div className="nav-links" style={{ display:'flex', gap:28 }}>
+          {['Features','Pricing','FAQ'].map(item=>(
+            <a key={item} href={`#${item.toLowerCase()}`} style={{ fontFamily:T.sans, fontSize:13, color:T.text3, textDecoration:'none', transition:'color 0.15s' }} onMouseEnter={e=>e.target.style.color='#fff'} onMouseLeave={e=>e.target.style.color=T.text3}>{item}</a>
           ))}
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
         {clerkEnabled && !isSignedIn && (
           <>
-            <SignInButton mode="modal">
-              <button style={{ fontFamily: T.sans, fontSize: 13, color: T.text3, background: 'transparent', border: 'none', cursor: 'pointer', padding: '6px 12px', transition: 'color 0.15s' }}
-                onMouseEnter={e => e.target.style.color = T.text2}
-                onMouseLeave={e => e.target.style.color = T.text3}
-              >Sign in</button>
-            </SignInButton>
+            <SignInButton mode="modal"><button style={{ fontFamily:T.sans, fontSize:13, color:T.text2, background:'transparent', border:'none', cursor:'pointer', padding:'6px 12px' }} onMouseEnter={e=>e.target.style.color='#fff'} onMouseLeave={e=>e.target.style.color=T.text2}>Sign in</button></SignInButton>
             <SignUpButton mode="modal">
-              <button style={{ fontFamily: T.sans, fontSize: 13, color: T.text, background: 'transparent', border: `1px solid ${T.border2}`, borderRadius: 8, padding: '7px 18px', cursor: 'pointer', fontWeight: 500, transition: 'all 0.15s' }}
-                onMouseEnter={e => { e.target.style.borderColor = T.accent; e.target.style.color = T.accent }}
-                onMouseLeave={e => { e.target.style.borderColor = T.border2; e.target.style.color = T.text }}
-              >Get started →</button>
+              <button style={{ fontFamily:T.sans, fontSize:13, fontWeight:600, color:'#fff', background:T.grad, border:'none', borderRadius:8, padding:'8px 20px', cursor:'pointer', boxShadow:'0 4px 20px rgba(124,58,237,0.4)', transition:'all 0.2s' }} onMouseEnter={e=>{e.target.style.boxShadow='0 6px 28px rgba(124,58,237,0.6)';e.target.style.transform='translateY(-1px)'}} onMouseLeave={e=>{e.target.style.boxShadow='0 4px 20px rgba(124,58,237,0.4)';e.target.style.transform='none'}}>Get started free</button>
             </SignUpButton>
           </>
         )}
@@ -266,8 +238,8 @@ function Nav({ navigate }) {
 function Hero({ navigate, runDemo, ticker, setTicker, loading, progress, progressPct, error }) {
   const inputRef = useRef(null)
   const { isSignedIn } = useUser()
-  const [inputFocused, setInputFocused] = useState(false)
-  const POPULAR = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'TSLA']
+  const [focused, setFocused] = useState(false)
+  const POPULAR = ['AAPL','MSFT','NVDA','GOOGL','META','TSLA']
 
   function handleGenerate(t) {
     if (!t?.trim()) return
@@ -277,226 +249,216 @@ function Hero({ navigate, runDemo, ticker, setTicker, loading, progress, progres
   }
 
   return (
-    <section style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '120px 24px 80px', position: 'relative', overflow: 'hidden', textAlign: 'center' }}>
-      {/* Gradient mesh background */}
-      <div style={{ position: 'absolute', inset: 0, background: `
-        radial-gradient(ellipse 80% 50% at 20% 10%, #1d2f6620 0%, transparent 60%),
-        radial-gradient(ellipse 60% 40% at 80% 20%, #3b82f612 0%, transparent 55%),
-        radial-gradient(ellipse 50% 60% at 50% 100%, #06b6d408 0%, transparent 50%)
-      `, zIndex: 0 }} />
-      {/* Fine grid */}
-      <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(${T.border} 1px, transparent 1px), linear-gradient(90deg, ${T.border} 1px, transparent 1px)`, backgroundSize: '60px 60px', zIndex: 0, opacity: 0.25 }} />
-      {/* Bottom fade */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 300, background: `linear-gradient(to bottom, transparent, ${T.bg})`, zIndex: 1 }} />
+    <section style={{ minHeight:'100vh', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'120px 24px 80px', textAlign:'center' }}>
+      {/* Animated gradient orbs */}
+      <div style={{ position:'absolute', top:'-15%', left:'10%', width:700, height:700, borderRadius:'50%', background:'radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%)', animation:'orbFloat 12s ease-in-out infinite', zIndex:0, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', top:'20%', right:'-5%', width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 70%)', animation:'orbFloat 16s ease-in-out infinite reverse', zIndex:0, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', bottom:'-10%', left:'30%', width:600, height:600, borderRadius:'50%', background:'radial-gradient(circle, rgba(6,182,212,0.08) 0%, transparent 70%)', animation:'orbFloat 14s ease-in-out infinite 4s', zIndex:0, pointerEvents:'none' }} />
+      {/* Grid */}
+      <div style={{ position:'absolute', inset:0, backgroundImage:`linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)`, backgroundSize:'64px 64px', zIndex:0 }} />
+      {/* Fade to bg at bottom */}
+      <div style={{ position:'absolute', bottom:0, left:0, right:0, height:250, background:`linear-gradient(to bottom, transparent, ${T.bg})`, zIndex:1 }} />
 
-      <div style={{ position: 'relative', zIndex: 2, maxWidth: 860, width: '100%' }}>
-        {/* Status badge */}
-        <div style={{ animation: 'fadeUp 0.5s ease both', marginBottom: 28, display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(59,130,246,0.06)', border: `1px solid rgba(59,130,246,0.18)`, borderRadius: 99, padding: '6px 14px' }}>
-          <div style={{ width: 5, height: 5, borderRadius: '50%', background: T.green, boxShadow: `0 0 8px ${T.green}` }} />
-          <span style={{ fontFamily: T.mono, fontSize: 10, color: T.text3, letterSpacing: 1.5 }}>LIVE · SEC EDGAR · REAL-TIME DATA</span>
+      <div style={{ position:'relative', zIndex:2, maxWidth:800, width:'100%' }}>
+        <div style={{ animation:'fadeUp 0.6s ease both', display:'inline-flex', alignItems:'center', gap:8, background:'rgba(124,58,237,0.08)', border:'1px solid rgba(124,58,237,0.25)', borderRadius:99, padding:'6px 16px', marginBottom:28 }}>
+          <div style={{ width:6, height:6, borderRadius:'50%', background:T.green, boxShadow:`0 0 10px ${T.green}` }} />
+          <span style={{ fontFamily:T.mono, fontSize:10, color:'rgba(255,255,255,0.5)', letterSpacing:1.5 }}>LIVE · SEC EDGAR · 8,400+ US STOCKS</span>
         </div>
 
-        {/* Headline */}
-        <h1 style={{ animation: 'fadeUp 0.5s ease 0.05s both', fontFamily: T.sans, fontSize: 'clamp(48px, 7vw, 88px)', fontWeight: 800, letterSpacing: -3, lineHeight: 1, margin: '0 0 24px', color: T.text }}>
-          Institutional equity<br />research in{' '}
-          <span style={{ background: `linear-gradient(135deg, ${T.accent} 0%, ${T.cyan} 50%, ${T.purple} 100%)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            60 seconds.
-          </span>
+        <h1 style={{ animation:'fadeUp 0.6s ease 0.06s both', fontFamily:T.sans, fontSize:'clamp(50px,7.5vw,96px)', fontWeight:900, letterSpacing:'-0.04em', lineHeight:0.95, margin:'0 0 26px', color:T.text }}>
+          Institutional<br />
+          <GradientText>equity research</GradientText><br />
+          in 60 seconds.
         </h1>
 
-        {/* Sub */}
-        <p style={{ animation: 'fadeUp 0.5s ease 0.1s both', fontFamily: T.sans, fontSize: 17, color: T.text2, lineHeight: 1.75, margin: '0 auto 44px', maxWidth: 560 }}>
-          Full DCF models, Monte Carlo simulation, comparable company analysis, and BUY/HOLD/SELL recommendations — powered by live SEC EDGAR filings.
+        <p style={{ animation:'fadeUp 0.6s ease 0.12s both', fontFamily:T.sans, fontSize:18, color:T.text2, lineHeight:1.75, margin:'0 auto 44px', maxWidth:540 }}>
+          Full DCF models, Monte Carlo simulation, comps, risk matrices, and BUY/HOLD/SELL recommendations — powered by live SEC EDGAR filings.
         </p>
 
-        {/* Search */}
-        <div style={{ animation: 'fadeUp 0.5s ease 0.15s both', maxWidth: 520, margin: '0 auto' }}>
-          <form onSubmit={e => { e.preventDefault(); handleGenerate(ticker) }}>
-            <div style={{ display: 'flex', gap: 0, marginBottom: 14, background: T.panel, border: `1px solid ${inputFocused ? T.accent + '50' : T.border2}`, borderRadius: 12, overflow: 'hidden', boxShadow: inputFocused ? `0 0 0 3px ${T.accent}15, 0 16px 40px #00000040` : '0 8px 32px #00000040', transition: 'all 0.2s ease' }}>
-              <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', borderRight: `1px solid ${T.border}` }}>
-                <span style={{ fontFamily: T.mono, fontSize: 14, color: T.text3 }}>$</span>
+        {/* Search input */}
+        <div style={{ animation:'fadeUp 0.6s ease 0.18s both', maxWidth:520, margin:'0 auto' }}>
+          <form onSubmit={e=>{e.preventDefault();handleGenerate(ticker)}}>
+            <div style={{ display:'flex', gap:0, marginBottom:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${focused?'rgba(124,58,237,0.6)':T.border2}`, borderRadius:14, overflow:'hidden', boxShadow: focused ? '0 0 0 4px rgba(124,58,237,0.15), 0 20px 60px rgba(0,0,0,0.4)' : '0 8px 40px rgba(0,0,0,0.4)', transition:'all 0.2s ease', backdropFilter:'blur(10px)' }}>
+              <div style={{ display:'flex', alignItems:'center', padding:'0 18px', borderRight:`1px solid ${T.border}` }}>
+                <span style={{ fontFamily:T.mono, fontSize:16, color:T.text3 }}>$</span>
               </div>
-              <input
-                ref={inputRef}
-                type="text"
-                placeholder="Enter a ticker: AAPL, NVDA, MSFT..."
-                value={ticker}
-                onChange={e => setTicker(e.target.value.toUpperCase().replace(/[^A-Z.]/g, ''))}
-                disabled={loading}
-                onFocus={() => setInputFocused(true)}
-                onBlur={() => setInputFocused(false)}
-                style={{ flex: 1, background: 'transparent', border: 'none', padding: '16px 14px', color: T.text, fontFamily: T.mono, fontSize: 14, outline: 'none' }}
-              />
-              <button type="submit" disabled={loading || !ticker.trim()} style={{
-                background: loading || !ticker.trim() ? 'transparent' : `linear-gradient(135deg, ${T.accent}, ${T.cyan})`,
-                color: loading || !ticker.trim() ? T.text3 : '#fff',
-                border: 'none', padding: '0 24px',
-                fontFamily: T.mono, fontSize: 12, fontWeight: 700,
-                cursor: loading || !ticker.trim() ? 'not-allowed' : 'pointer',
-                whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 8,
-                transition: 'all 0.15s ease', letterSpacing: 0.5,
-                borderLeft: `1px solid ${T.border}`,
-              }}>
-                {loading ? <><Spinner /> Running...</> : isSignedIn ? 'Analyze →' : 'Preview →'}
+              <input ref={inputRef} type="text" placeholder="Enter ticker: AAPL, NVDA, MSFT..." value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase().replace(/[^A-Z.]/g,''))} disabled={loading} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+                style={{ flex:1, background:'transparent', border:'none', padding:'18px 16px', color:T.text, fontFamily:T.mono, fontSize:14, outline:'none' }} />
+              <button type="submit" disabled={loading||!ticker.trim()} style={{ background: loading||!ticker.trim() ? 'transparent' : T.grad, color: loading||!ticker.trim() ? T.text3 : '#fff', border:'none', padding:'0 24px', fontFamily:T.mono, fontSize:12, fontWeight:700, cursor: loading||!ticker.trim() ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', gap:8, transition:'all 0.15s', whiteSpace:'nowrap', borderLeft:`1px solid ${T.border}`, letterSpacing:0.5 }}>
+                {loading ? <><Spinner /> Analyzing...</> : isSignedIn ? 'Analyze →' : 'Preview →'}
               </button>
             </div>
           </form>
 
           {loading && (
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ height: 2, background: T.border, borderRadius: 1, overflow: 'hidden', marginBottom: 6 }}>
-                <div style={{ height: '100%', background: `linear-gradient(90deg, ${T.accent}, ${T.cyan})`, width: progressPct + '%', transition: 'width 0.5s ease', borderRadius: 1 }} />
+            <div style={{ marginBottom:14 }}>
+              <div style={{ height:2, background:'rgba(255,255,255,0.06)', borderRadius:1, overflow:'hidden', marginBottom:7 }}>
+                <div style={{ height:'100%', background:T.grad, width:progressPct+'%', transition:'width 0.5s ease', borderRadius:1 }} />
               </div>
-              <div style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, animation: 'pulse 1.5s infinite', textAlign: 'left' }}>{progress}</div>
+              <div style={{ fontFamily:T.mono, fontSize:11, color:T.violet, animation:'pulse 1.5s infinite' }}>{progress}</div>
             </div>
           )}
-
           {error && !error.includes('limit') && (
-            <div style={{ background: T.red + '10', border: `1px solid ${T.red}25`, borderRadius: 8, padding: '10px 14px', fontFamily: T.mono, fontSize: 11, color: T.red, marginBottom: 14, textAlign: 'left' }}>
-              ⚠ {error}
-            </div>
+            <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:8, padding:'10px 14px', fontFamily:T.mono, fontSize:11, color:T.red, marginBottom:14 }}>⚠ {error}</div>
           )}
 
-          {/* Popular tickers */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontFamily: T.mono, fontSize: 10, color: T.text3 }}>Try:</span>
-            {POPULAR.map(t => (
-              <button key={t} onClick={() => { setTicker(t); handleGenerate(t) }}
-                style={{ fontFamily: T.mono, fontSize: 10, color: T.text3, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', transition: 'all 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = T.accentBd; e.currentTarget.style.color = T.accent }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.text3 }}
-              >{t}</button>
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', justifyContent:'center', marginBottom:20 }}>
+            <span style={{ fontFamily:T.mono, fontSize:10, color:T.text3 }}>Try:</span>
+            {POPULAR.map(t=>(
+              <button key={t} onClick={()=>{setTicker(t);handleGenerate(t)}} style={{ fontFamily:T.mono, fontSize:10, color:T.text3, background:'rgba(255,255,255,0.04)', border:`1px solid ${T.border}`, borderRadius:6, padding:'4px 10px', cursor:'pointer', transition:'all 0.15s' }} onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(124,58,237,0.5)';e.currentTarget.style.color='rgba(124,58,237,1)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.color=T.text3}}>{t}</button>
+            ))}
+          </div>
+          <div style={{ display:'flex', gap:22, justifyContent:'center', flexWrap:'wrap' }}>
+            {['Free preview — no signup','No API keys needed','Real SEC EDGAR data'].map(t=>(
+              <span key={t} style={{ fontFamily:T.mono, fontSize:10, color:T.text3, display:'flex', alignItems:'center', gap:6 }}>
+                <span style={{ color:T.green }}>✓</span> {t}
+              </span>
             ))}
           </div>
         </div>
-
-        {/* Trust */}
-        <div style={{ animation: 'fadeUp 0.5s ease 0.2s both', display: 'flex', gap: 24, justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' }}>
-          {['Free — no card required', 'No API keys', 'Real SEC filings'].map(t => (
-            <span key={t} style={{ fontFamily: T.mono, fontSize: 10, color: T.text3, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ color: T.green }}>✓</span> {t}
-            </span>
-          ))}
-        </div>
       </div>
 
-      {/* Mockup below */}
-      <div style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 700, marginTop: 64, animation: 'fadeUp 0.6s ease 0.3s both' }}>
-        <div style={{ position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)', width: 600, height: 200, background: `radial-gradient(ellipse, ${T.accent}18 0%, transparent 70%)`, pointerEvents: 'none', zIndex: -1 }} />
+      {/* Hero mockup */}
+      <div style={{ position:'relative', zIndex:2, width:'100%', maxWidth:680, marginTop:72, animation:'fadeUp 0.8s ease 0.3s both' }}>
         <ReportMockup />
       </div>
     </section>
   )
 }
 
-// ─── Logo Bar ─────────────────────────────────────────────────────────────────
-function LogoBar() {
+// ─── Social proof bar ─────────────────────────────────────────────────────────
+function SocialProof() {
   return (
-    <div style={{ padding: '32px 24px', borderTop: `1px solid ${T.border}`, borderBottom: `1px solid ${T.border}` }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ fontFamily: T.mono, fontSize: 9, color: T.text3, letterSpacing: 2, marginBottom: 20, textTransform: 'uppercase' }}>Data sourced directly from</div>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 48, flexWrap: 'wrap', alignItems: 'center' }}>
+    <Reveal style={{ padding:'56px 24px', borderTop:`1px solid ${T.border}`, borderBottom:`1px solid ${T.border}`, textAlign:'center' }}>
+      <div style={{ maxWidth:900, margin:'0 auto' }}>
+        <div style={{ fontFamily:T.mono, fontSize:9, color:T.text3, letterSpacing:2.5, textTransform:'uppercase', marginBottom:28 }}>Trusted data sources & infrastructure</div>
+        <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:0, flexWrap:'wrap' }}>
           {[
-            { name: 'SEC EDGAR', sub: 'XBRL Filings' },
-            { name: 'NYSE', sub: '5,000+ Stocks' },
-            { name: 'NASDAQ', sub: '3,400+ Stocks' },
-            { name: 'Groq', sub: 'AI Inference' },
-            { name: 'Clerk', sub: 'Auth' },
-          ].map(({ name, sub }) => (
-            <div key={name} style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: T.mono, fontSize: 13, fontWeight: 700, color: T.text3, letterSpacing: 1 }}>{name}</div>
-              <div style={{ fontFamily: T.mono, fontSize: 9, color: T.muted, marginTop: 2 }}>{sub}</div>
+            { name:'SEC EDGAR', desc:'Official XBRL filings' },
+            { name:'NYSE', desc:'5,000+ equities' },
+            { name:'NASDAQ', desc:'3,400+ equities' },
+            { name:'Groq', desc:'LLaMA 3.3 70B' },
+            { name:'Neon', desc:'Serverless Postgres' },
+            { name:'Vercel', desc:'Edge infrastructure' },
+          ].map(({ name, desc }, i, arr) => (
+            <div key={name} style={{ padding:'0 28px', borderRight: i<arr.length-1 ? `1px solid ${T.border}` : 'none', textAlign:'center' }}>
+              <div style={{ fontFamily:T.mono, fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.35)', letterSpacing:1.5, marginBottom:4 }}>{name}</div>
+              <div style={{ fontFamily:T.mono, fontSize:9, color:T.text3 }}>{desc}</div>
             </div>
           ))}
         </div>
       </div>
-    </div>
+    </Reveal>
   )
 }
 
-// ─── Bento Features ───────────────────────────────────────────────────────────
+// ─── Stats ────────────────────────────────────────────────────────────────────
+function Stats() {
+  const items = [
+    { n:'8,400+', label:'US stocks covered', sub:'All SEC EDGAR filers' },
+    { n:'< 60s', label:'Average report time', sub:'From ticker to full note' },
+    { n:'2,000', label:'Monte Carlo trials', sub:'Per DCF valuation' },
+    { n:'Free', label:'To get started', sub:'No card, no keys' },
+  ]
+  return (
+    <Reveal style={{ padding:'80px 24px', background:'rgba(255,255,255,0.01)' }}>
+      <div style={{ maxWidth:960, margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:0 }} className="stats-grid">
+        {items.map((s,i)=>(
+          <div key={i} style={{ padding:'0 32px', textAlign:'center', borderRight: i<3?`1px solid ${T.border}`:'none' }}>
+            <div style={{ fontFamily:T.mono, fontSize:36, fontWeight:800, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', marginBottom:8, letterSpacing:-1 }}>{s.n}</div>
+            <div style={{ fontFamily:T.sans, fontSize:14, fontWeight:600, color:T.text, marginBottom:4 }}>{s.label}</div>
+            <div style={{ fontFamily:T.mono, fontSize:10, color:T.text3 }}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
+    </Reveal>
+  )
+}
+
+// ─── Features Bento ───────────────────────────────────────────────────────────
 function Features() {
   return (
-    <section id="features" style={{ padding: '120px 24px', background: T.bg2 }}>
-      <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-        <Reveal style={{ textAlign: 'center', marginBottom: 64 }}>
-          <div style={{ fontFamily: T.mono, fontSize: 10, color: T.accent, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>What AXIOM produces</div>
-          <h2 style={{ fontFamily: T.sans, fontSize: 'clamp(32px, 4vw, 52px)', fontWeight: 800, color: T.text, letterSpacing: -2, margin: 0, lineHeight: 1.05 }}>
-            Six analyses.<br />One report.
-          </h2>
+    <section id="features" style={{ padding:'120px 24px', borderTop:`1px solid ${T.border}` }}>
+      <div style={{ maxWidth:1040, margin:'0 auto' }}>
+        <Reveal style={{ textAlign:'center', marginBottom:64 }}>
+          <div style={{ fontFamily:T.mono, fontSize:10, letterSpacing:2, textTransform:'uppercase', marginBottom:12, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>What AXIOM produces</div>
+          <h2 style={{ fontFamily:T.sans, fontSize:'clamp(32px,5vw,60px)', fontWeight:900, color:T.text, letterSpacing:'-0.04em', margin:'0 0 16px', lineHeight:1 }}>Six analyses.<br />One report.</h2>
+          <p style={{ fontFamily:T.sans, fontSize:15, color:T.text2, maxWidth:460, margin:'0 auto', lineHeight:1.75 }}>Everything an institutional analyst builds over hours — in one structured output.</p>
         </Reveal>
 
-        {/* Bento grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gridTemplateRows: 'auto', gap: 12 }} className="bento-grid">
-          {/* Big DCF card */}
-          <Reveal delay={0} style={{ gridColumn: 'span 4', background: T.panel, border: `1px solid ${T.border}`, borderRadius: 16, padding: '36px 40px', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, right: 0, width: 200, height: 200, background: `radial-gradient(circle, ${T.accent}08 0%, transparent 70%)`, pointerEvents: 'none' }} />
-            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.accent, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>01 — Valuation</div>
-            <div style={{ fontFamily: T.sans, fontSize: 24, fontWeight: 700, color: T.text, marginBottom: 10, letterSpacing: -0.5 }}>DCF + Monte Carlo</div>
-            <div style={{ fontSize: 13, color: T.text2, lineHeight: 1.75, maxWidth: 380, marginBottom: 28 }}>8-year two-stage discounted cash flow model with 2,000 Monte Carlo trials. Get the full P10–P90 value distribution, not just a single price target.</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {['WACC sensitivity', 'Terminal growth', 'Probability distribution', 'Bear/base/bull'].map(t => (
-                <span key={t} style={{ fontFamily: T.mono, fontSize: 9, color: T.text3, background: `${T.accent}08`, border: `1px solid ${T.border2}`, borderRadius: 4, padding: '3px 8px' }}>{t}</span>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gridAutoRows:'auto', gap:10 }} className="bento-grid">
+          {/* Big card — DCF */}
+          <Reveal delay={0} style={{ gridColumn:'span 4', background:'rgba(255,255,255,0.03)', backdropFilter:'blur(20px)', border:`1px solid ${T.border}`, borderRadius:20, padding:'40px 44px', position:'relative', overflow:'hidden' }}>
+            <div style={{ position:'absolute', top:-60, right:-60, width:300, height:300, borderRadius:'50%', background:'radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)', pointerEvents:'none' }} />
+            <div style={{ fontFamily:T.mono, fontSize:9, color:T.violet, letterSpacing:2, textTransform:'uppercase', marginBottom:14 }}>01 — Valuation Engine</div>
+            <h3 style={{ fontFamily:T.sans, fontSize:28, fontWeight:800, color:T.text, margin:'0 0 12px', letterSpacing:'-0.03em' }}>DCF + Monte Carlo</h3>
+            <p style={{ fontSize:14, color:T.text2, lineHeight:1.75, maxWidth:400, marginBottom:28 }}>8-year two-stage discounted cash flow with 2,000 Monte Carlo iterations. Full P10–P90 distribution, not just a single price target.</p>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              {['WACC sensitivity','Terminal growth','Bear/base/bull','Probability dist.'].map(t=>(
+                <span key={t} style={{ fontFamily:T.mono, fontSize:9, color:T.text3, background:'rgba(124,58,237,0.08)', border:'1px solid rgba(124,58,237,0.2)', borderRadius:4, padding:'3px 8px' }}>{t}</span>
               ))}
             </div>
           </Reveal>
 
-          {/* Score card */}
-          <Reveal delay={0.05} style={{ gridColumn: 'span 2', background: T.panel, border: `1px solid ${T.border}`, borderRadius: 16, padding: '32px 28px' }}>
-            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.purple, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>02 — Risk</div>
-            <div style={{ fontFamily: T.sans, fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 10 }}>Altman Z-Score</div>
-            <div style={{ fontSize: 12, color: T.text2, lineHeight: 1.7, marginBottom: 20 }}>Five-factor bankruptcy prediction model. Flags financial distress risk instantly.</div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {['Safe', 'Grey', 'Distress'].map((z, i) => (
-                <div key={z} style={{ flex: 1, padding: '8px 6px', background: i === 0 ? `${T.green}12` : i === 1 ? `${T.gold}12` : `${T.red}12`, border: `1px solid ${i === 0 ? T.green : i === 1 ? T.gold : T.red}25`, borderRadius: 6, textAlign: 'center' }}>
-                  <div style={{ fontFamily: T.mono, fontSize: 8, color: i === 0 ? T.green : i === 1 ? T.gold : T.red, fontWeight: 700 }}>{z}</div>
+          {/* Altman Z */}
+          <Reveal delay={0.05} style={{ gridColumn:'span 2', background:'rgba(255,255,255,0.03)', backdropFilter:'blur(20px)', border:`1px solid ${T.border}`, borderRadius:20, padding:'32px 28px', position:'relative', overflow:'hidden' }}>
+            <div style={{ position:'absolute', bottom:-30, right:-30, width:120, height:120, borderRadius:'50%', background:'radial-gradient(circle, rgba(239,68,68,0.12) 0%, transparent 70%)' }} />
+            <div style={{ fontFamily:T.mono, fontSize:9, color:'rgba(239,68,68,0.8)', letterSpacing:2, textTransform:'uppercase', marginBottom:14 }}>02 — Risk Score</div>
+            <h3 style={{ fontFamily:T.sans, fontSize:22, fontWeight:800, color:T.text, margin:'0 0 10px' }}>Altman Z-Score</h3>
+            <p style={{ fontSize:12, color:T.text2, lineHeight:1.7, marginBottom:20 }}>Five-factor bankruptcy prediction. Flags financial distress before you read a word.</p>
+            <div style={{ display:'flex', gap:6 }}>
+              {[['Safe',T.green],['Grey',T.gold],['Distress',T.red]].map(([z,c])=>(
+                <div key={z} style={{ flex:1, padding:'8px 4px', background:`${c}12`, border:`1px solid ${c}30`, borderRadius:6, textAlign:'center' }}>
+                  <div style={{ fontFamily:T.mono, fontSize:8, color:c, fontWeight:700 }}>{z}</div>
                 </div>
               ))}
             </div>
           </Reveal>
 
-          {/* SEC data */}
-          <Reveal delay={0.08} style={{ gridColumn: 'span 2', background: `linear-gradient(145deg, #0d1428, #091022)`, border: `1px solid ${T.border}`, borderRadius: 16, padding: '32px 28px', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.cyan, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>03 — Data</div>
-            <div style={{ fontFamily: T.sans, fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 10 }}>Live SEC EDGAR</div>
-            <div style={{ fontSize: 12, color: T.text2, lineHeight: 1.7 }}>Revenue, margins, FCF, balance sheet from official XBRL filings. No third-party data vendors.</div>
-            <div style={{ marginTop: 20, fontFamily: T.mono, fontSize: 10, lineHeight: 2 }}>
-              {['✓ 10-K annual filings', '✓ 10-Q quarterly filings', '✓ Real-time price data'].map(f => (
-                <div key={f} style={{ color: T.green }}>{f}</div>
-              ))}
+          {/* SEC Data card with image */}
+          <Reveal delay={0.08} style={{ gridColumn:'span 2', borderRadius:20, overflow:'hidden', position:'relative', minHeight:220 }}>
+            <img src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600&h=400&fit=crop&q=80" alt="Financial data" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.25 }} />
+            <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(6,182,212,0.3), rgba(37,99,235,0.2))', backdropFilter:'blur(2px)' }} />
+            <div style={{ position:'relative', padding:'28px 24px' }}>
+              <div style={{ fontFamily:T.mono, fontSize:9, color:T.cyan, letterSpacing:2, textTransform:'uppercase', marginBottom:14 }}>03 — Data</div>
+              <h3 style={{ fontFamily:T.sans, fontSize:22, fontWeight:800, color:T.text, margin:'0 0 10px' }}>Live SEC EDGAR</h3>
+              <p style={{ fontSize:12, color:'rgba(255,255,255,0.7)', lineHeight:1.7 }}>Official XBRL filings from the SEC. 10-K, 10-Q, real-time price data.</p>
             </div>
           </Reveal>
 
           {/* Comps */}
-          <Reveal delay={0.1} style={{ gridColumn: 'span 2', background: T.panel, border: `1px solid ${T.border}`, borderRadius: 16, padding: '32px 28px' }}>
-            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.accent, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>04 — Analysis</div>
-            <div style={{ fontFamily: T.sans, fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 10 }}>Comps Table</div>
-            <div style={{ fontSize: 12, color: T.text2, lineHeight: 1.7 }}>Comparable company analysis with EV/EBITDA, P/E, revenue growth across 3 sector peers.</div>
+          <Reveal delay={0.10} style={{ gridColumn:'span 2', background:'rgba(255,255,255,0.03)', backdropFilter:'blur(20px)', border:`1px solid ${T.border}`, borderRadius:20, padding:'32px 28px' }}>
+            <div style={{ fontFamily:T.mono, fontSize:9, color:T.blue, letterSpacing:2, textTransform:'uppercase', marginBottom:14 }}>04 — Benchmarking</div>
+            <h3 style={{ fontFamily:T.sans, fontSize:22, fontWeight:800, color:T.text, margin:'0 0 10px' }}>Comps Table</h3>
+            <p style={{ fontSize:12, color:T.text2, lineHeight:1.7 }}>Comparable company analysis — EV/EBITDA, P/E, revenue growth, margins across 3 sector peers.</p>
+            <div style={{ marginTop:16, display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:4 }}>
+              {['EV/EBITDA','P/E Ratio','Rev Growth','Gross Mgn','Net Mgn','FCF Yield'].map(m=>(
+                <div key={m} style={{ fontFamily:T.mono, fontSize:8, color:T.text3, background:'rgba(255,255,255,0.04)', borderRadius:4, padding:'4px 6px', textAlign:'center' }}>{m}</div>
+              ))}
+            </div>
           </Reveal>
 
           {/* Piotroski */}
-          <Reveal delay={0.12} style={{ gridColumn: 'span 2', background: T.panel, border: `1px solid ${T.border}`, borderRadius: 16, padding: '32px 28px' }}>
-            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.purple, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>05 — Quality</div>
-            <div style={{ fontFamily: T.sans, fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 10 }}>Piotroski F-Score</div>
-            <div style={{ fontSize: 12, color: T.text2, lineHeight: 1.7 }}>9-point quality screen across profitability, leverage, and operating efficiency.</div>
-            <div style={{ display: 'flex', gap: 3, marginTop: 18 }}>
-              {Array.from({ length: 9 }, (_, i) => (
-                <div key={i} style={{ flex: 1, height: 20, background: i < 7 ? `linear-gradient(180deg, ${T.green}, ${T.green}80)` : T.border, borderRadius: 3 }} />
+          <Reveal delay={0.12} style={{ gridColumn:'span 2', background:'rgba(255,255,255,0.03)', backdropFilter:'blur(20px)', border:`1px solid ${T.border}`, borderRadius:20, padding:'32px 28px' }}>
+            <div style={{ fontFamily:T.mono, fontSize:9, color:T.violet, letterSpacing:2, textTransform:'uppercase', marginBottom:14 }}>05 — Quality</div>
+            <h3 style={{ fontFamily:T.sans, fontSize:22, fontWeight:800, color:T.text, margin:'0 0 10px' }}>Piotroski F-Score</h3>
+            <p style={{ fontSize:12, color:T.text2, lineHeight:1.7 }}>9-point quality screen across profitability, leverage, and efficiency.</p>
+            <div style={{ display:'flex', gap:4, marginTop:16 }}>
+              {Array.from({length:9},(_,i)=>(
+                <div key={i} style={{ flex:1, height:24, background: i<7 ? T.grad : 'rgba(255,255,255,0.06)', borderRadius:4 }} />
               ))}
             </div>
-            <div style={{ fontFamily: T.mono, fontSize: 9, color: T.green, marginTop: 6 }}>7/9 — Strong Quality</div>
+            <div style={{ fontFamily:T.mono, fontSize:9, color:T.green, marginTop:6 }}>7/9 — Strong fundamental quality</div>
           </Reveal>
 
-          {/* Recommendation */}
-          <Reveal delay={0.14} style={{ gridColumn: 'span 2', background: `linear-gradient(145deg, #0d1a10, #091022)`, border: `1px solid ${T.green}25`, borderRadius: 16, padding: '32px 28px', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, background: `radial-gradient(circle, ${T.green}15 0%, transparent 70%)` }} />
-            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.green, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>06 — Output</div>
-            <div style={{ fontFamily: T.sans, fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 10 }}>BUY / HOLD / SELL</div>
-            <div style={{ fontSize: 12, color: T.text2, lineHeight: 1.7 }}>Clear recommendation with 12-month price target and upside, grounded in the model.</div>
-            <div style={{ marginTop: 20, display: 'flex', gap: 8 }}>
-              {[['BUY', T.green], ['HOLD', T.gold], ['SELL', T.red]].map(([r, c]) => (
-                <div key={r} style={{ flex: 1, padding: '8px 0', background: `${c}12`, border: `1px solid ${c}30`, borderRadius: 6, textAlign: 'center', fontFamily: T.mono, fontSize: 11, color: c, fontWeight: 700 }}>{r}</div>
-              ))}
+          {/* Recommendation image card */}
+          <Reveal delay={0.14} style={{ gridColumn:'span 2', borderRadius:20, overflow:'hidden', position:'relative', minHeight:200 }}>
+            <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop&q=80" alt="Analytics dashboard" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.2 }} />
+            <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(16,185,129,0.3), rgba(6,182,212,0.15))' }} />
+            <div style={{ position:'relative', padding:'28px 24px' }}>
+              <div style={{ fontFamily:T.mono, fontSize:9, color:T.green, letterSpacing:2, textTransform:'uppercase', marginBottom:14 }}>06 — Output</div>
+              <h3 style={{ fontFamily:T.sans, fontSize:22, fontWeight:800, color:T.text, margin:'0 0 10px' }}>BUY/HOLD/SELL</h3>
+              <p style={{ fontSize:12, color:'rgba(255,255,255,0.7)', lineHeight:1.7 }}>Clear recommendation, 12-month price target, and upside % — grounded in the model.</p>
             </div>
           </Reveal>
         </div>
@@ -505,36 +467,120 @@ function Features() {
   )
 }
 
-// ─── How It Works ─────────────────────────────────────────────────────────────
-function HowItWorks() {
-  const steps = [
-    { n: '01', title: 'Enter any ticker', desc: 'Type any US-listed stock symbol. NYSE, NASDAQ, or OTC — if it files with the SEC, AXIOM covers it.' },
-    { n: '02', title: 'EDGAR data pulled live', desc: 'AXIOM fetches 10-K and 10-Q XBRL filings from the SEC in real-time. No cached data, no stale exports.' },
-    { n: '03', title: 'AI builds the model', desc: 'A two-pass analysis: first, chain-of-thought reasoning. Then structured JSON extraction for every section.' },
-    { n: '04', title: 'Full report in 60s', desc: 'DCF model, comps table, risk matrix, and a final analyst note — all in one structured research note.' },
+// ─── Who it's for ─────────────────────────────────────────────────────────────
+function ForSection() {
+  const cards = [
+    { img:'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop&q=80', role:'Retail Investors', desc:'Stop reading Reddit for stock picks. Get the same analysis a buy-side analyst runs — in 60 seconds.' },
+    { img:'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=300&fit=crop&q=80', role:'Finance Students', desc:'Learn what a real equity research note looks like. Use AXIOM reports as reference for DCF modeling and investment memos.' },
+    { img:'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=300&fit=crop&q=80', role:'Analysts & Associates', desc:'Run a fast first-pass on any company before spending hours in a model. Validate your assumptions against a second opinion.' },
+    { img:'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=300&fit=crop&q=80', role:'Finance Creators', desc:'Power your newsletter, podcast, or YouTube with data-backed analysis. Generate a credible research note before you record.' },
   ]
   return (
-    <section style={{ padding: '120px 24px', background: T.bg, borderTop: `1px solid ${T.border}` }}>
-      <div style={{ maxWidth: 960, margin: '0 auto' }}>
-        <Reveal style={{ textAlign: 'center', marginBottom: 72 }}>
-          <div style={{ fontFamily: T.mono, fontSize: 10, color: T.accent, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>How it works</div>
-          <h2 style={{ fontFamily: T.sans, fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 800, color: T.text, letterSpacing: -1.5, margin: 0 }}>Four steps. Sixty seconds.</h2>
+    <section style={{ padding:'120px 24px', borderTop:`1px solid ${T.border}`, background:'rgba(255,255,255,0.01)' }}>
+      <div style={{ maxWidth:1000, margin:'0 auto' }}>
+        <Reveal style={{ textAlign:'center', marginBottom:64 }}>
+          <div style={{ fontFamily:T.mono, fontSize:10, letterSpacing:2, textTransform:'uppercase', marginBottom:12, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>Who uses AXIOM</div>
+          <h2 style={{ fontFamily:T.sans, fontSize:'clamp(28px,5vw,52px)', fontWeight:900, color:T.text, letterSpacing:'-0.04em', margin:0, lineHeight:1 }}>Built for anyone who takes<br />stocks seriously.</h2>
         </Reveal>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0, position: 'relative' }} className="steps-grid">
-          {/* Connector line */}
-          <div style={{ position: 'absolute', top: 28, left: '12.5%', right: '12.5%', height: 1, background: `linear-gradient(90deg, transparent, ${T.border2}, ${T.border2}, transparent)`, zIndex: 0 }} />
-          {steps.map((s, i) => (
-            <Reveal key={i} delay={i * 0.07} style={{ padding: '0 20px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
-              <div style={{ width: 56, height: 56, borderRadius: '50%', background: T.panel, border: `1px solid ${T.border2}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: `0 0 0 4px ${T.bg}` }}>
-                <span style={{ fontFamily: T.mono, fontSize: 12, fontWeight: 700, color: T.accent }}>{s.n}</span>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }} className="usecases-grid">
+          {cards.map((c,i)=>(
+            <Reveal key={i} delay={i*0.07} style={{ background:'rgba(255,255,255,0.03)', border:`1px solid ${T.border}`, borderRadius:18, overflow:'hidden', transition:'all 0.25s ease' }} onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(124,58,237,0.35)';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 20px 60px rgba(0,0,0,0.3)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none'}}>
+              <div style={{ height:160, overflow:'hidden', position:'relative' }}>
+                <img src={c.img} alt={c.role} style={{ width:'100%', height:'100%', objectFit:'cover', transition:'transform 0.4s ease' }} onMouseEnter={e=>e.target.style.transform='scale(1.05)'} onMouseLeave={e=>e.target.style.transform='none'} />
+                <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom, transparent 40%, rgba(4,4,10,0.9))' }} />
               </div>
-              <div style={{ fontFamily: T.sans, fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 10 }}>{s.title}</div>
-              <div style={{ fontSize: 12, color: T.text2, lineHeight: 1.75 }}>{s.desc}</div>
+              <div style={{ padding:'20px 22px 24px' }}>
+                <div style={{ fontFamily:T.sans, fontSize:15, fontWeight:700, color:T.text, marginBottom:8 }}>{c.role}</div>
+                <div style={{ fontSize:12, color:T.text2, lineHeight:1.75 }}>{c.desc}</div>
+              </div>
             </Reveal>
           ))}
         </div>
       </div>
     </section>
+  )
+}
+
+// ─── How it works ─────────────────────────────────────────────────────────────
+function HowItWorks() {
+  const steps = [
+    { n:'01', title:'Enter any ticker', desc:'Type any US-listed stock symbol. NYSE, NASDAQ, OTC — if it files with the SEC, AXIOM covers it.' },
+    { n:'02', title:'Live EDGAR fetch', desc:'AXIOM pulls 10-K and 10-Q XBRL filings from the SEC directly. No cached data, no stale exports.' },
+    { n:'03', title:'AI builds the model', desc:'Two-pass analysis: chain-of-thought reasoning, then structured JSON extraction for every section.' },
+    { n:'04', title:'Full report in 60s', desc:'DCF model, comps, risk matrix, analyst note — all in one structured research note you can share or export.' },
+  ]
+  return (
+    <section style={{ padding:'120px 24px', borderTop:`1px solid ${T.border}` }}>
+      <div style={{ maxWidth:960, margin:'0 auto' }}>
+        <Reveal style={{ textAlign:'center', marginBottom:72 }}>
+          <div style={{ fontFamily:T.mono, fontSize:10, letterSpacing:2, textTransform:'uppercase', marginBottom:12, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>Process</div>
+          <h2 style={{ fontFamily:T.sans, fontSize:'clamp(28px,5vw,52px)', fontWeight:900, color:T.text, letterSpacing:'-0.04em', margin:0 }}>Four steps. Sixty seconds.</h2>
+        </Reveal>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:0 }} className="steps-grid">
+          {steps.map((s,i)=>(
+            <Reveal key={i} delay={i*0.08} style={{ padding:'0 20px', textAlign:'center', position:'relative' }}>
+              {i < 3 && <div style={{ position:'absolute', top:26, right:'-10%', width:'20%', height:1, background:'linear-gradient(90deg, rgba(124,58,237,0.4), transparent)', zIndex:0 }} />}
+              <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(124,58,237,0.1)', border:'1px solid rgba(124,58,237,0.25)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px', boxShadow:'0 0 0 6px rgba(4,4,10,1)' }}>
+                <span style={{ fontFamily:T.mono, fontSize:11, fontWeight:700, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>{s.n}</span>
+              </div>
+              <div style={{ fontFamily:T.sans, fontSize:15, fontWeight:700, color:T.text, marginBottom:10 }}>{s.title}</div>
+              <div style={{ fontSize:12, color:T.text2, lineHeight:1.75 }}>{s.desc}</div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─── Demo screenshot ──────────────────────────────────────────────────────────
+function DemoSection() {
+  return (
+    <Reveal style={{ padding:'120px 24px', borderTop:`1px solid ${T.border}`, background:'rgba(255,255,255,0.01)' }}>
+      <div style={{ maxWidth:1000, margin:'0 auto', display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }} className="demo-grid">
+        <div>
+          <div style={{ fontFamily:T.mono, fontSize:10, letterSpacing:2, textTransform:'uppercase', marginBottom:12, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>Real data. Always.</div>
+          <h2 style={{ fontFamily:T.sans, fontSize:'clamp(26px,4vw,44px)', fontWeight:900, color:T.text, letterSpacing:'-0.04em', margin:'0 0 18px', lineHeight:1.05 }}>Directly from the SEC.<br />No data vendors.</h2>
+          <p style={{ fontSize:14, color:T.text2, lineHeight:1.85, marginBottom:28 }}>Every report pulls from the SEC's EDGAR XBRL database — the same structured data that Bloomberg terminals use. No third-party aggregators, no stale quarterly exports.</p>
+          {['Real-time 10-K and 10-Q filings','XBRL structured financial data','Income statement, balance sheet, FCF','Historical revenue and margin trends','Live market price and market cap'].map(f=>(
+            <div key={f} style={{ display:'flex', alignItems:'center', gap:12, marginBottom:11 }}>
+              <div style={{ width:18, height:18, borderRadius:4, background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <span style={{ fontSize:10, color:T.green }}>✓</span>
+              </div>
+              <span style={{ fontSize:13, color:T.text2 }}>{f}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ background:'rgba(255,255,255,0.03)', backdropFilter:'blur(20px)', border:`1px solid ${T.border}`, borderRadius:16, overflow:'hidden', fontFamily:T.mono, fontSize:11 }}>
+          <div style={{ background:'rgba(255,255,255,0.03)', padding:'12px 18px', borderBottom:`1px solid ${T.border}`, display:'flex', alignItems:'center', gap:8 }}>
+            <div style={{ display:'flex', gap:5 }}>
+              <div style={{ width:9, height:9, borderRadius:'50%', background:'rgba(255,95,87,0.5)' }} />
+              <div style={{ width:9, height:9, borderRadius:'50%', background:'rgba(254,188,46,0.5)' }} />
+              <div style={{ width:9, height:9, borderRadius:'50%', background:'rgba(40,200,64,0.5)' }} />
+            </div>
+            <span style={{ color:T.text3, fontSize:10, marginLeft:6 }}>SEC EDGAR · XBRL API</span>
+          </div>
+          <div style={{ padding:'20px 22px', lineHeight:2.1 }}>
+            {[
+              ['GET','/api/edgar?ticker=NVDA','rgba(251,191,36,0.9)'],
+              ['→','Resolving CIK: 0001045810',T.text3],
+              ['→','Fetching companyfacts...',T.text3],
+              ['✓','us-gaap:Revenues $60.9B',T.green],
+              ['✓','OperatingIncomeLoss $32.9B',T.green],
+              ['✓','StockholdersEquity $42.9B',T.green],
+              ['✓','NetCashProvidedByOperating $28.1B',T.green],
+              ['→','Live price: $875.20',T.text3],
+              ['✓','28 financial fields extracted',T.green],
+            ].map(([p,l,c],i)=>(
+              <div key={i} style={{ display:'flex', gap:14 }}>
+                <span style={{ color:p==='GET'?'rgba(251,191,36,0.9)':p==='✓'?T.green:T.text3, minWidth:20 }}>{p}</span>
+                <span style={{ color:c }}>{l}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Reveal>
   )
 }
 
@@ -549,73 +595,63 @@ function Pricing({ navigate }) {
     if (!waitEmail.includes('@')) return
     setWaitStatus('loading')
     try {
-      const r = await fetch('/api/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: waitEmail }) })
+      const r = await fetch('/api/waitlist', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ email:waitEmail }) })
       setWaitStatus(r.ok ? 'done' : 'error')
     } catch { setWaitStatus('error') }
   }
 
   return (
-    <section id="pricing" style={{ padding: '120px 24px', background: T.bg2, borderTop: `1px solid ${T.border}` }}>
-      <div style={{ maxWidth: 800, margin: '0 auto' }}>
-        <Reveal style={{ textAlign: 'center', marginBottom: 64 }}>
-          <div style={{ fontFamily: T.mono, fontSize: 10, color: T.accent, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>Pricing</div>
-          <h2 style={{ fontFamily: T.sans, fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 800, color: T.text, letterSpacing: -1.5, margin: 0 }}>Simple pricing. Start free.</h2>
+    <section id="pricing" style={{ padding:'120px 24px', borderTop:`1px solid ${T.border}` }}>
+      <div style={{ maxWidth:820, margin:'0 auto' }}>
+        <Reveal style={{ textAlign:'center', marginBottom:64 }}>
+          <div style={{ fontFamily:T.mono, fontSize:10, letterSpacing:2, textTransform:'uppercase', marginBottom:12, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>Pricing</div>
+          <h2 style={{ fontFamily:T.sans, fontSize:'clamp(28px,5vw,56px)', fontWeight:900, color:T.text, letterSpacing:'-0.04em', margin:'0 0 14px', lineHeight:1 }}>Simple pricing.<br />Start free.</h2>
+          <p style={{ fontFamily:T.sans, fontSize:15, color:T.text2, margin:0 }}>Full institutional-grade reports, no API keys required.</p>
         </Reveal>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }} className="pricing-grid">
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }} className="pricing-grid">
           {/* Free */}
-          <Reveal delay={0} style={{ background: T.panel, border: `1px solid ${T.border}`, borderRadius: 20, padding: '40px 36px' }}>
-            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.text3, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 16 }}>Free</div>
-            <div style={{ fontFamily: T.mono, fontSize: 56, fontWeight: 700, color: T.text, lineHeight: 1, marginBottom: 6 }}>$0</div>
-            <div style={{ fontSize: 13, color: T.text2, marginBottom: 32, lineHeight: 1.65 }}>2 reports per month. No card, no API keys.</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 32 }}>
-              {['2 reports / month', 'Full DCF + Monte Carlo', 'Altman Z + Piotroski F', 'Comps + risk matrix', 'BUY/HOLD/SELL output'].map(f => (
-                <div key={f} style={{ display: 'flex', gap: 10, fontSize: 13, color: T.text2 }}>
-                  <span style={{ color: T.green, flexShrink: 0 }}>✓</span> {f}
-                </div>
-              ))}
-            </div>
+          <Reveal delay={0} style={{ background:'rgba(255,255,255,0.03)', backdropFilter:'blur(20px)', border:`1px solid ${T.border}`, borderRadius:22, padding:'44px 40px', transition:'border-color 0.2s, box-shadow 0.2s' }} onMouseEnter={e=>{e.currentTarget.style.borderColor=T.border2;e.currentTarget.style.boxShadow='0 20px 60px rgba(0,0,0,0.3)'}} onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.boxShadow='none'}}>
+            <div style={{ fontFamily:T.mono, fontSize:10, color:T.text3, textTransform:'uppercase', letterSpacing:2, marginBottom:16 }}>Free</div>
+            <div style={{ fontFamily:T.mono, fontSize:60, fontWeight:800, color:T.text, lineHeight:1, marginBottom:6 }}>$0</div>
+            <div style={{ fontSize:13, color:T.text2, marginBottom:36, lineHeight:1.65 }}>2 reports per month. No credit card, no API keys.</div>
+            {['2 reports / month','Full DCF + Monte Carlo','Altman Z-Score + Piotroski F','Comps table + risk matrix','BUY / HOLD / SELL recommendation'].map(f=>(
+              <div key={f} style={{ display:'flex', gap:10, marginBottom:12, fontSize:13, color:T.text2 }}>
+                <span style={{ color:T.green, flexShrink:0 }}>✓</span> {f}
+              </div>
+            ))}
             <SignUpButton mode="modal">
-              <button style={{ display: 'block', width: '100%', background: 'transparent', color: T.text, border: `1px solid ${T.border2}`, borderRadius: 10, padding: '14px 0', fontFamily: T.mono, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', letterSpacing: 0.3 }}
-                onMouseEnter={e => { e.target.style.borderColor = T.accent + '60'; e.target.style.color = T.accent }}
-                onMouseLeave={e => { e.target.style.borderColor = T.border2; e.target.style.color = T.text }}
-              >Get started free →</button>
+              <button style={{ display:'block', width:'100%', marginTop:36, background:'transparent', color:T.text, border:`1px solid ${T.border2}`, borderRadius:10, padding:'15px 0', fontFamily:T.mono, fontSize:13, fontWeight:700, cursor:'pointer', transition:'all 0.15s', letterSpacing:0.3 }} onMouseEnter={e=>{e.target.style.borderColor='rgba(124,58,237,0.5)';e.target.style.color='rgba(255,255,255,0.9)'}} onMouseLeave={e=>{e.target.style.borderColor=T.border2;e.target.style.color=T.text}}>Get started free →</button>
             </SignUpButton>
           </Reveal>
 
-          {/* Pro */}
-          <Reveal delay={0.08} style={{ background: `linear-gradient(145deg, #0d1428 0%, #091022 100%)`, border: `1px solid ${T.accentBd}`, borderRadius: 20, padding: '40px 36px', position: 'relative', overflow: 'hidden', boxShadow: `0 0 60px ${T.accent}0a` }}>
-            <div style={{ position: 'absolute', top: 0, right: 0, background: T.accent, color: '#fff', fontFamily: T.mono, fontSize: 8, fontWeight: 700, padding: '5px 14px', borderRadius: '0 20px 0 8px', letterSpacing: 1.5 }}>COMING SOON</div>
-            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.accent, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 16 }}>Pro</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 6 }}>
-              <span style={{ fontFamily: T.mono, fontSize: 56, fontWeight: 700, color: T.text, lineHeight: 1 }}>$49</span>
-              <span style={{ fontFamily: T.mono, fontSize: 12, color: T.text3 }}>/month</span>
-            </div>
-            <div style={{ fontSize: 13, color: T.text2, marginBottom: 32, lineHeight: 1.65 }}>No limits. Priority AI. Team access.</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 32 }}>
-              {['Unlimited reports', 'Cloud report history', 'Shareable report links', 'Priority AI (Claude Opus)', 'Team accounts (3 seats)', 'Advanced PDF exports'].map(f => (
-                <div key={f} style={{ display: 'flex', gap: 10, fontSize: 13, color: T.text2 }}>
-                  <span style={{ color: T.accent, flexShrink: 0 }}>✓</span> {f}
+          {/* Pro — gradient border */}
+          <Reveal delay={0.08} style={{ position:'relative', borderRadius:22, padding:'2px', background:T.grad, boxShadow:'0 0 60px rgba(124,58,237,0.2)' }}>
+            <div style={{ background:'#0a0a1a', borderRadius:20, padding:'44px 40px', height:'100%', boxSizing:'border-box' }}>
+              <div style={{ position:'absolute', top:14, right:14, background:T.grad, color:'#fff', fontFamily:T.mono, fontSize:8, fontWeight:700, padding:'5px 12px', borderRadius:6, letterSpacing:1.5 }}>COMING SOON</div>
+              <div style={{ fontFamily:T.mono, fontSize:10, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', textTransform:'uppercase', letterSpacing:2, marginBottom:16 }}>Pro</div>
+              <div style={{ display:'flex', alignItems:'baseline', gap:6, marginBottom:6 }}>
+                <span style={{ fontFamily:T.mono, fontSize:60, fontWeight:800, color:T.text, lineHeight:1 }}>$49</span>
+                <span style={{ fontFamily:T.mono, fontSize:13, color:T.text3 }}>/month</span>
+              </div>
+              <div style={{ fontSize:13, color:T.text2, marginBottom:36, lineHeight:1.65 }}>No limits. Priority AI. Team access.</div>
+              {['Unlimited reports','Cloud report history','Shareable report links','Priority AI (Claude Opus)','Team accounts (3 seats)','Advanced PDF exports'].map(f=>(
+                <div key={f} style={{ display:'flex', gap:10, marginBottom:12, fontSize:13, color:T.text2 }}>
+                  <span style={{ background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', flexShrink:0 }}>✓</span> {f}
                 </div>
               ))}
+              {waitStatus === 'done' ? (
+                <div style={{ marginTop:36, padding:'15px 0', textAlign:'center', fontFamily:T.mono, fontSize:12, color:T.violet, background:'rgba(124,58,237,0.08)', border:'1px solid rgba(124,58,237,0.2)', borderRadius:10 }}>✓ You're on the list</div>
+              ) : (
+                <form onSubmit={joinWaitlist} style={{ marginTop:36, display:'flex', flexDirection:'column', gap:8 }}>
+                  <input type="email" value={waitEmail} onChange={e=>setWaitEmail(e.target.value)} placeholder="your@email.com" required style={{ background:'rgba(255,255,255,0.04)', border:`1px solid ${T.border}`, borderRadius:10, padding:'13px 16px', fontFamily:T.mono, fontSize:12, color:T.text, outline:'none', boxSizing:'border-box', width:'100%', transition:'border-color 0.15s' }} onFocus={e=>e.target.style.borderColor='rgba(124,58,237,0.5)'} onBlur={e=>e.target.style.borderColor=T.border} />
+                  <button type="submit" disabled={waitStatus==='loading'} style={{ background:T.grad, color:'#fff', border:'none', borderRadius:10, padding:'14px 0', fontFamily:T.mono, fontSize:12, fontWeight:700, cursor:waitStatus==='loading'?'wait':'pointer', letterSpacing:0.5 }}>
+                    {waitStatus==='loading' ? 'Joining...' : 'Join the waitlist →'}
+                  </button>
+                  {waitStatus==='error' && <div style={{ fontSize:11, color:T.red, textAlign:'center' }}>Something went wrong.</div>}
+                </form>
+              )}
             </div>
-            {waitStatus === 'done' ? (
-              <div style={{ padding: '14px 0', textAlign: 'center', fontFamily: T.mono, fontSize: 12, color: T.accent, background: T.accentLo, border: `1px solid ${T.accentBd}`, borderRadius: 10 }}>
-                ✓ You're on the list
-              </div>
-            ) : (
-              <form onSubmit={joinWaitlist} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <input type="email" value={waitEmail} onChange={e => setWaitEmail(e.target.value)} placeholder="your@email.com" required
-                  style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, padding: '12px 14px', fontFamily: T.mono, fontSize: 12, color: T.text, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.15s', width: '100%' }}
-                  onFocus={e => e.target.style.borderColor = T.accentBd}
-                  onBlur={e => e.target.style.borderColor = T.border}
-                />
-                <button type="submit" disabled={waitStatus === 'loading'} style={{ background: `linear-gradient(135deg, ${T.accent}, ${T.cyan})`, color: '#fff', border: 'none', borderRadius: 8, padding: '13px 0', fontFamily: T.mono, fontSize: 12, fontWeight: 700, cursor: waitStatus === 'loading' ? 'wait' : 'pointer', letterSpacing: 0.5 }}>
-                  {waitStatus === 'loading' ? 'Joining...' : 'Join the waitlist'}
-                </button>
-                {waitStatus === 'error' && <div style={{ fontSize: 11, color: T.red, textAlign: 'center' }}>Something went wrong.</div>}
-              </form>
-            )}
           </Reveal>
         </div>
       </div>
@@ -625,32 +661,31 @@ function Pricing({ navigate }) {
 
 // ─── FAQ ──────────────────────────────────────────────────────────────────────
 const FAQS = [
-  { q: 'How accurate are the reports?', a: 'AXIOM sources all financial data directly from SEC EDGAR\'s structured XBRL database — the same data Bloomberg and FactSet use. The AI analysis is based entirely on that data. As with any model, outputs should be used as a starting point, not a final investment decision.' },
-  { q: 'Which stocks does AXIOM cover?', a: 'Any US-listed company that files with the SEC — NYSE, NASDAQ, and OTC markets. This includes all S&P 500 companies, mid-caps, and most small-caps with XBRL-formatted filings.' },
-  { q: 'How is AXIOM different from a screener?', a: 'Screeners give you tables of numbers. AXIOM produces a full written research note — with a DCF model, comparable company analysis, risk matrix, and an investment recommendation — the same output a junior analyst spends hours on.' },
-  { q: 'Do I need my own AI API key?', a: 'No. AXIOM runs entirely on our infrastructure. Sign up and generate reports immediately — no keys, no configuration, no setup.' },
-  { q: 'What does the free plan include?', a: '2 complete, full-length equity research reports per month. Every section included: DCF, Monte Carlo, comps, risk matrix, analyst note. No features paywalled on free tier.' },
-  { q: 'When is Pro launching?', a: 'Soon. Pro will include unlimited reports, cloud history, shareable links, and priority AI models. Join the waitlist above to get notified.' },
+  { q:'How accurate are the reports?', a:'AXIOM sources all financial data directly from SEC EDGAR\'s XBRL database — the same data Bloomberg uses. The AI analysis is built entirely on that data. Use reports as a starting point, not a final investment decision.' },
+  { q:'Which stocks does AXIOM cover?', a:'Any US-listed company that files with the SEC — NYSE, NASDAQ, and OTC. All S&P 500 companies, mid-caps, and most small-caps with XBRL-formatted filings.' },
+  { q:'How is AXIOM different from a screener?', a:'Screeners give tables of numbers. AXIOM produces a full written research note — DCF model, comparable company analysis, risk matrix, and an investment recommendation — the same output a junior analyst spends hours on.' },
+  { q:'Do I need my own AI API key?', a:'No. AXIOM runs entirely on our infrastructure. Sign up and generate reports immediately — no keys, no configuration, no setup.' },
+  { q:'What does the free plan include?', a:'2 complete, full-length equity research reports per month. Every section included: DCF, Monte Carlo, comps, risk matrix, analyst note. Nothing is paywalled on the free tier.' },
+  { q:'When is Pro launching?', a:'Soon. Pro will offer unlimited reports, cloud history, shareable links, and priority AI models. Join the waitlist above to get early access.' },
 ]
-
 function FAQ() {
   const [open, setOpen] = useState(null)
   return (
-    <section id="faq" style={{ padding: '120px 24px', background: T.bg, borderTop: `1px solid ${T.border}` }}>
-      <div style={{ maxWidth: 680, margin: '0 auto' }}>
-        <Reveal style={{ textAlign: 'center', marginBottom: 60 }}>
-          <div style={{ fontFamily: T.mono, fontSize: 10, color: T.accent, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>FAQ</div>
-          <h2 style={{ fontFamily: T.sans, fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 800, color: T.text, letterSpacing: -1.5, margin: 0 }}>Common questions.</h2>
+    <section id="faq" style={{ padding:'120px 24px', borderTop:`1px solid ${T.border}`, background:'rgba(255,255,255,0.01)' }}>
+      <div style={{ maxWidth:680, margin:'0 auto' }}>
+        <Reveal style={{ textAlign:'center', marginBottom:60 }}>
+          <div style={{ fontFamily:T.mono, fontSize:10, letterSpacing:2, textTransform:'uppercase', marginBottom:12, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>FAQ</div>
+          <h2 style={{ fontFamily:T.sans, fontSize:'clamp(28px,4vw,48px)', fontWeight:900, color:T.text, letterSpacing:'-0.04em', margin:0 }}>Common questions.</h2>
         </Reveal>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {FAQS.map((f, i) => (
-            <div key={i} style={{ border: `1px solid ${open === i ? T.border2 : T.border}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
-              <button onClick={() => setOpen(open === i ? null : i)} style={{ width: '100%', background: open === i ? T.panel : 'transparent', border: 'none', padding: '18px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s' }}>
-                <span style={{ fontFamily: T.sans, fontSize: 14, fontWeight: 500, color: open === i ? T.text : T.text2 }}>{f.q}</span>
-                <span style={{ fontFamily: T.mono, fontSize: 16, color: open === i ? T.accent : T.text3, marginLeft: 16, flexShrink: 0, transform: open === i ? 'rotate(45deg)' : 'none', transition: 'transform 0.2s, color 0.2s' }}>+</span>
+        <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+          {FAQS.map((f,i)=>(
+            <div key={i} style={{ background:open===i?'rgba(124,58,237,0.05)':'rgba(255,255,255,0.02)', border:`1px solid ${open===i?'rgba(124,58,237,0.25)':T.border}`, borderRadius:12, overflow:'hidden', transition:'all 0.2s' }}>
+              <button onClick={()=>setOpen(open===i?null:i)} style={{ width:'100%', background:'none', border:'none', padding:'20px 22px', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer', textAlign:'left' }}>
+                <span style={{ fontFamily:T.sans, fontSize:14, fontWeight:500, color:open===i?T.text:T.text2 }}>{f.q}</span>
+                <span style={{ fontFamily:T.mono, fontSize:16, color:open===i?T.violet:T.text3, marginLeft:16, flexShrink:0, transform:open===i?'rotate(45deg)':'none', transition:'transform 0.2s, color 0.2s' }}>+</span>
               </button>
-              <div style={{ maxHeight: open === i ? '300px' : '0', overflow: 'hidden', transition: 'max-height 0.3s ease' }}>
-                <div style={{ padding: '0 20px 18px', fontSize: 13, color: T.text2, lineHeight: 1.8 }}>{f.a}</div>
+              <div style={{ maxHeight:open===i?'300px':'0', overflow:'hidden', transition:'max-height 0.3s ease' }}>
+                <div style={{ padding:'0 22px 20px', fontSize:13, color:T.text2, lineHeight:1.85 }}>{f.a}</div>
               </div>
             </div>
           ))}
@@ -664,45 +699,37 @@ function FAQ() {
 function FinalCTA({ navigate }) {
   const { isSignedIn } = useUser()
   return (
-    <section style={{ padding: '140px 24px', background: T.bg2, borderTop: `1px solid ${T.border}`, textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 700, height: 400, background: `radial-gradient(ellipse, ${T.accent}10 0%, transparent 70%)`, pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(${T.border} 1px, transparent 1px), linear-gradient(90deg, ${T.border} 1px, transparent 1px)`, backgroundSize: '60px 60px', opacity: 0.15 }} />
-      <Reveal style={{ position: 'relative', zIndex: 1, maxWidth: 600, margin: '0 auto' }}>
-        <h2 style={{ fontFamily: T.sans, fontSize: 'clamp(36px, 5vw, 60px)', fontWeight: 800, color: T.text, letterSpacing: -2.5, margin: '0 0 18px', lineHeight: 1 }}>
+    <section style={{ position:'relative', overflow:'hidden', textAlign:'center', padding:'160px 24px' }}>
+      {/* Full gradient background */}
+      <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, #0d0520 0%, #05071a 40%, #020612 100%)' }} />
+      <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:900, height:600, borderRadius:'50%', background:'radial-gradient(ellipse, rgba(124,58,237,0.2) 0%, rgba(37,99,235,0.1) 40%, transparent 70%)', pointerEvents:'none' }} />
+      <div style={{ position:'absolute', inset:0, backgroundImage:`linear-gradient(rgba(124,58,237,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(124,58,237,0.04) 1px, transparent 1px)`, backgroundSize:'60px 60px' }} />
+      <Reveal style={{ position:'relative', zIndex:1, maxWidth:640, margin:'0 auto' }}>
+        <h2 style={{ fontFamily:T.sans, fontSize:'clamp(40px,6vw,72px)', fontWeight:900, color:T.text, letterSpacing:'-0.05em', margin:'0 0 18px', lineHeight:0.95 }}>
           Start your first<br />
-          <span style={{ background: `linear-gradient(135deg, ${T.accent}, ${T.cyan})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>free report now.</span>
+          <GradientText>free report now.</GradientText>
         </h2>
-        <p style={{ fontSize: 16, color: T.text2, margin: '0 auto 40px', lineHeight: 1.75, maxWidth: 420 }}>
-          Institutional-grade equity research on any US stock in under 60 seconds.
+        <p style={{ fontFamily:T.sans, fontSize:17, color:T.text2, margin:'0 auto 44px', lineHeight:1.75, maxWidth:440 }}>
+          Institutional equity research on any US stock in under 60 seconds. No card. No setup.
         </p>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap' }}>
           {isSignedIn ? (
-            <button onClick={() => navigate('/app')}
-              style={{ background: `linear-gradient(135deg, ${T.accent}, ${T.cyan})`, color: '#fff', fontFamily: T.mono, fontSize: 13, fontWeight: 700, padding: '16px 40px', borderRadius: 10, border: 'none', cursor: 'pointer', letterSpacing: 0.5, boxShadow: `0 4px 32px ${T.accent}30`, transition: 'all 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 8px 40px ${T.accent}50` }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 4px 32px ${T.accent}30` }}
-            >Open AXIOM →</button>
+            <GradBtn onClick={()=>navigate('/app')} style={{ fontSize:14, padding:'16px 44px' }}>Open AXIOM →</GradBtn>
           ) : (
             <>
               <SignUpButton mode="modal">
-                <button style={{ background: `linear-gradient(135deg, ${T.accent}, ${T.cyan})`, color: '#fff', fontFamily: T.mono, fontSize: 13, fontWeight: 700, padding: '16px 36px', borderRadius: 10, border: 'none', cursor: 'pointer', letterSpacing: 0.5, boxShadow: `0 4px 32px ${T.accent}30`, transition: 'all 0.15s' }}
-                  onMouseEnter={e => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = `0 8px 40px ${T.accent}50` }}
-                  onMouseLeave={e => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = `0 4px 32px ${T.accent}30` }}
-                >Generate a free report →</button>
+                <GradBtn style={{ fontSize:14, padding:'16px 40px' }}>Generate a free report →</GradBtn>
               </SignUpButton>
               <SignInButton mode="modal">
-                <button style={{ background: 'transparent', color: T.text2, fontFamily: T.mono, fontSize: 13, padding: '16px 24px', borderRadius: 10, border: `1px solid ${T.border2}`, cursor: 'pointer', transition: 'all 0.15s' }}
-                  onMouseEnter={e => { e.target.style.borderColor = T.accentBd; e.target.style.color = T.text }}
-                  onMouseLeave={e => { e.target.style.borderColor = T.border2; e.target.style.color = T.text2 }}
-                >Sign in</button>
+                <button style={{ background:'transparent', color:T.text2, fontFamily:T.mono, fontSize:13, padding:'16px 28px', borderRadius:10, border:`1px solid ${T.border2}`, cursor:'pointer', transition:'all 0.15s', backdropFilter:'blur(10px)' }} onMouseEnter={e=>{e.target.style.borderColor='rgba(124,58,237,0.4)';e.target.style.color=T.text}} onMouseLeave={e=>{e.target.style.borderColor=T.border2;e.target.style.color=T.text2}}>Sign in</button>
               </SignInButton>
             </>
           )}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 24, flexWrap: 'wrap' }}>
-          {['Free forever', '2 reports/month', 'No credit card'].map(t => (
-            <span key={t} style={{ fontFamily: T.mono, fontSize: 10, color: T.text3, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ color: T.green }}>✓</span> {t}
+        <div style={{ display:'flex', justifyContent:'center', gap:24, marginTop:28, flexWrap:'wrap' }}>
+          {['Free forever','2 reports/month','No credit card'].map(t=>(
+            <span key={t} style={{ fontFamily:T.mono, fontSize:10, color:T.text3, display:'flex', alignItems:'center', gap:6 }}>
+              <span style={{ color:T.green }}>✓</span> {t}
             </span>
           ))}
         </div>
@@ -714,22 +741,19 @@ function FinalCTA({ navigate }) {
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function Footer() {
   return (
-    <footer style={{ background: T.bg, borderTop: `1px solid ${T.border}`, padding: '32px 40px' }}>
-      <div style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+    <footer style={{ background:T.bg, borderTop:`1px solid ${T.border}`, padding:'32px 40px' }}>
+      <div style={{ maxWidth:1000, margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:16 }}>
         <div>
-          <div style={{ fontFamily: T.mono, fontSize: 13, fontWeight: 700, color: T.text, letterSpacing: 5, marginBottom: 6 }}>AXIOM</div>
-          <div style={{ fontFamily: T.mono, fontSize: 9, color: T.text3 }}>Equity Research · SEC EDGAR · Not investment advice</div>
+          <div style={{ fontFamily:T.mono, fontSize:14, fontWeight:800, letterSpacing:6, background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', marginBottom:6 }}>AXIOM</div>
+          <div style={{ fontFamily:T.mono, fontSize:9, color:T.text3 }}>Institutional Equity Research · Not investment advice</div>
         </div>
-        <div style={{ display: 'flex', gap: 28 }}>
-          {['Features', 'Pricing', 'FAQ'].map(item => (
-            <a key={item} href={`#${item.toLowerCase()}`} style={{ fontFamily: T.sans, fontSize: 12, color: T.text3, textDecoration: 'none', transition: 'color 0.15s' }}
-              onMouseEnter={e => e.target.style.color = T.text2}
-              onMouseLeave={e => e.target.style.color = T.text3}
-            >{item}</a>
+        <div style={{ display:'flex', gap:28 }}>
+          {['Features','Pricing','FAQ'].map(item=>(
+            <a key={item} href={`#${item.toLowerCase()}`} style={{ fontFamily:T.sans, fontSize:12, color:T.text3, textDecoration:'none', transition:'color 0.15s' }} onMouseEnter={e=>e.target.style.color=T.text2} onMouseLeave={e=>e.target.style.color=T.text3}>{item}</a>
           ))}
         </div>
-        <div style={{ fontFamily: T.mono, fontSize: 9, color: T.text3 }}>
-          Built on Vercel + Neon + Groq
+        <div style={{ fontFamily:T.mono, fontSize:9, color:T.text3, textAlign:'right', lineHeight:1.9 }}>
+          <div>Data: SEC EDGAR · Auth: Clerk · AI: Groq · Infra: Vercel + Neon</div>
         </div>
       </div>
     </footer>
@@ -753,13 +777,17 @@ export default function Landing() {
     style.textContent = `
       @keyframes spin { to { transform: rotate(360deg) } }
       @keyframes ticker { from { transform: translateX(0) } to { transform: translateX(-33.33%) } }
-      @keyframes fadeUp { from { opacity: 0; transform: translateY(24px) } to { opacity: 1; transform: translateY(0) } }
-      @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }
-      @media (max-width: 768px) {
+      @keyframes fadeUp { from { opacity: 0; transform: translateY(28px) } to { opacity: 1; transform: translateY(0) } }
+      @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
+      @keyframes orbFloat { 0%,100% { transform: translate(0,0) } 33% { transform: translate(30px,-20px) } 66% { transform: translate(-20px,15px) } }
+      @media (max-width:768px) {
         .bento-grid { grid-template-columns: 1fr !important; }
         .bento-grid > * { grid-column: span 1 !important; }
         .pricing-grid { grid-template-columns: 1fr !important; }
         .steps-grid { grid-template-columns: 1fr 1fr !important; }
+        .usecases-grid { grid-template-columns: 1fr 1fr !important; }
+        .stats-grid { grid-template-columns: 1fr 1fr !important; }
+        .demo-grid { grid-template-columns: 1fr !important; }
         .nav-links { display: none !important; }
       }
     `
@@ -770,65 +798,57 @@ export default function Landing() {
   async function runDemo(t) {
     if (!t?.trim() || loading) return
     const sym = t.trim().toUpperCase()
-    setLoading(true)
-    setError('')
-    setReport(null)
-    setFinancials(null)
-    setProgressPct(10)
+    setLoading(true); setError(''); setReport(null); setFinancials(null); setProgressPct(10)
     try {
       setProgress('Fetching SEC EDGAR filings...')
       const edgarRes = await fetch(`/api/edgar?ticker=${encodeURIComponent(sym)}`)
       const edgarData = await edgarRes.json()
       if (!edgarRes.ok) throw new Error(edgarData.error || 'SEC EDGAR lookup failed')
-      setFinancials(edgarData.financials)
-      setProgressPct(40)
+      setFinancials(edgarData.financials); setProgressPct(40)
       setProgress('Generating AI analysis...')
-      const aiRes = await fetch('/api/demo-ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticker: sym, financials: edgarData.financials }) })
+      const aiRes = await fetch('/api/demo-ai', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ ticker:sym, financials:edgarData.financials }) })
       const aiData = await aiRes.json()
       if (!aiRes.ok) {
         if (aiData.limitReached) throw new Error('Demo limit reached (1/day). Sign up free for 2 full reports/month.')
         throw new Error(aiData.error || 'Analysis failed')
       }
-      setProgressPct(100)
-      setReport(aiData)
-      setCurrentTicker(sym)
+      setProgressPct(100); setReport(aiData); setCurrentTicker(sym)
     } catch (err) {
       setError(err.message)
     } finally {
-      setLoading(false)
-      setProgress('')
-      setProgressPct(0)
+      setLoading(false); setProgress(''); setProgressPct(0)
     }
   }
 
   if (report) {
     return (
-      <div style={{ minHeight: '100vh', background: T.bg, color: T.text }}>
+      <div style={{ minHeight:'100vh', background:T.bg, color:T.text }}>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}`}</style>
-        <div style={{ background: `${T.accent}0d`, borderBottom: `1px solid ${T.accentBd}`, padding: '10px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.accent }}>
-            Demo · 1 free preview/day · <span style={{ color: T.text3 }}>Sign up for 2 full reports/month</span>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => { setReport(null); setTicker('') }} style={{ fontFamily: T.mono, fontSize: 11, color: T.text2, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 6, padding: '6px 14px', cursor: 'pointer' }}>← Back</button>
-            <button onClick={() => navigate('/app')} style={{ fontFamily: T.mono, fontSize: 11, color: '#fff', background: `linear-gradient(135deg, ${T.accent}, ${T.cyan})`, border: 'none', borderRadius: 6, padding: '6px 16px', cursor: 'pointer', fontWeight: 700 }}>Sign up free →</button>
+        <div style={{ background:'rgba(124,58,237,0.08)', borderBottom:'1px solid rgba(124,58,237,0.2)', padding:'10px 24px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+          <div style={{ fontFamily:T.mono, fontSize:11, color:'rgba(167,139,250,0.9)' }}>Demo preview · 1 free/day · <span style={{ color:T.text3 }}>Sign up for 2 full reports/month</span></div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={()=>{ setReport(null); setTicker('') }} style={{ fontFamily:T.mono, fontSize:11, color:T.text2, background:'transparent', border:`1px solid ${T.border}`, borderRadius:6, padding:'6px 14px', cursor:'pointer' }}>← Back</button>
+            <button onClick={()=>navigate('/app')} style={{ fontFamily:T.mono, fontSize:11, color:'#fff', background:T.grad, border:'none', borderRadius:6, padding:'6px 18px', cursor:'pointer', fontWeight:700 }}>Sign up free →</button>
           </div>
         </div>
-        <div style={{ animation: 'fadeIn 0.3s ease' }}>
-          <ResearchReport ticker={currentTicker} financials={financials || {}} result={report} />
+        <div style={{ animation:'fadeIn 0.3s ease' }}>
+          <ResearchReport ticker={currentTicker} financials={financials||{}} result={report} />
         </div>
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.sans }}>
+    <div style={{ minHeight:'100vh', background:T.bg, color:T.text, fontFamily:T.sans }}>
       <Nav navigate={navigate} />
       <Hero navigate={navigate} runDemo={runDemo} ticker={ticker} setTicker={setTicker} loading={loading} progress={progress} progressPct={progressPct} error={error} />
       <TickerStrip />
-      <LogoBar />
+      <SocialProof />
+      <Stats />
       <Features />
+      <ForSection />
       <HowItWorks />
+      <DemoSection />
       <Pricing navigate={navigate} />
       <FAQ />
       <FinalCTA navigate={navigate} />
