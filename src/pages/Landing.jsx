@@ -545,7 +545,7 @@ function Features() {
 
           {/* SEC Data card with image */}
           <Reveal delay={0.08} style={{ gridColumn:'span 2', borderRadius:20, overflow:'hidden', position:'relative', minHeight:220 }}>
-            <img src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600&h=400&fit=crop&q=80" alt="Financial data" className="kenburns" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.25 }} />
+            <img src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600&h=400&fit=crop&q=80" alt="Financial data" loading="lazy" className="kenburns" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.25 }} />
             <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(6,182,212,0.3), rgba(37,99,235,0.2))', backdropFilter:'blur(2px)' }} />
             <div style={{ position:'relative', padding:'28px 24px' }}>
               <div style={{ fontFamily:T.mono, fontSize:9, color:T.cyan, letterSpacing:2, textTransform:'uppercase', marginBottom:14 }}>03 — Data</div>
@@ -581,7 +581,7 @@ function Features() {
 
           {/* Recommendation image card */}
           <Reveal delay={0.14} style={{ gridColumn:'span 2', borderRadius:20, overflow:'hidden', position:'relative', minHeight:200 }}>
-            <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop&q=80" alt="Analytics dashboard" className="kenburns kenburns-alt" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.2 }} />
+            <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop&q=80" alt="Analytics dashboard" loading="lazy" className="kenburns kenburns-alt" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.2 }} />
             <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(16,185,129,0.3), rgba(6,182,212,0.15))' }} />
             <div style={{ position:'relative', padding:'28px 24px' }}>
               <div style={{ fontFamily:T.mono, fontSize:9, color:T.green, letterSpacing:2, textTransform:'uppercase', marginBottom:14 }}>06 — Output</div>
@@ -614,7 +614,7 @@ function ForSection() {
           {cards.map((c,i)=>(
             <div key={i} className="lift-card" style={{ background:'rgba(255,255,255,0.03)', border:`1px solid ${T.border}`, borderRadius:18, overflow:'hidden', transition:`all 0.4s ${EASE}` }}>
               <div style={{ height:170, overflow:'hidden', position:'relative' }}>
-                <img src={c.img} alt={c.role} className="lift-img" style={{ width:'100%', height:'100%', objectFit:'cover', transition:`transform 0.6s ${EASE}` }} />
+                <img src={c.img} alt={c.role} loading="lazy" className="lift-img" style={{ width:'100%', height:'100%', objectFit:'cover', transition:`transform 0.6s ${EASE}` }} />
                 <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom, transparent 35%, rgba(4,4,10,0.92))' }} />
                 <div style={{ position:'absolute', bottom:14, left:18, fontFamily:T.sans, fontSize:15, fontWeight:700, color:'#fff' }}>{c.role}</div>
               </div>
@@ -655,7 +655,7 @@ function Showcase() {
 
         {/* The scaling hero image */}
         <div style={{ position:'relative', zIndex:1, width:'min(1000px, 94vw)', transform:`scale(${scale}) translateY(${translateY}px)`, opacity, borderRadius:radius, overflow:'hidden', boxShadow:`0 ${40+t*60}px ${100+t*80}px rgba(0,0,0,0.7), 0 0 ${t*120}px rgba(124,58,237,${t*0.25})`, border:'1px solid rgba(255,255,255,0.1)', willChange:'transform, opacity' }}>
-          <img src="https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=1400&h=820&fit=crop&q=85" alt="Financial dashboard" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+          <img src="https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=1400&h=820&fit=crop&q=85" alt="Financial dashboard" loading="lazy" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
           <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(124,58,237,0.18), rgba(6,182,212,0.1))' }} />
           {/* Caption overlay reveals near the end */}
           <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'48px 24px 28px', background:'linear-gradient(to top, rgba(4,4,10,0.92), transparent)', opacity:captionOpacity, transform:`translateY(${(1-captionOpacity)*20}px)`, transition:'opacity 0.1s linear' }}>
@@ -900,7 +900,7 @@ function FinalCTA({ navigate }) {
           )}
         </div>
         <div style={{ display:'flex', justifyContent:'center', gap:24, marginTop:28, flexWrap:'wrap' }}>
-          {['Free forever','2 reports/month','No credit card'].map(t=>(
+          {['No credit card','2 reports/month free','Data never stored'].map(t=>(
             <span key={t} style={{ fontFamily:T.mono, fontSize:10, color:T.text3, display:'flex', alignItems:'center', gap:6 }}>
               <span style={{ color:T.green }}>✓</span> {t}
             </span>

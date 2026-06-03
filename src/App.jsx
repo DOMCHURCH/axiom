@@ -309,6 +309,7 @@ export default function App() {
               </button>
             </SignInButton>
             <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>Continue with Google · GitHub · X · Email</div>
+            <div style={{ fontFamily: T.mono, fontSize: 9, color: T.muted, marginTop: 14, opacity: 0.6 }}>Your data is never stored or sold.</div>
           </div>
         ) : (
           <div style={{ width: '100%', maxWidth: 560, position: 'relative', zIndex: 1 }}>
