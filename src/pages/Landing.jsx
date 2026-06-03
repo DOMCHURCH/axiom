@@ -325,7 +325,7 @@ function Nav({ navigate }) {
           <>
             <SignInButton mode="modal"><button style={{ fontFamily:T.sans, fontSize:13, color:T.text2, background:'transparent', border:'none', cursor:'pointer', padding:'6px 12px' }} onMouseEnter={e=>e.target.style.color='#fff'} onMouseLeave={e=>e.target.style.color=T.text2}>Sign in</button></SignInButton>
             <SignUpButton mode="modal">
-              <button style={{ fontFamily:T.sans, fontSize:13, fontWeight:600, color:'#fff', background:T.grad, border:'none', borderRadius:8, padding:'8px 20px', cursor:'pointer', boxShadow:'0 4px 20px rgba(124,58,237,0.4)', transition:'all 0.2s' }} onMouseEnter={e=>{e.target.style.boxShadow='0 6px 28px rgba(124,58,237,0.6)';e.target.style.transform='translateY(-1px)'}} onMouseLeave={e=>{e.target.style.boxShadow='0 4px 20px rgba(124,58,237,0.4)';e.target.style.transform='none'}}>Get started free</button>
+              <button style={{ fontFamily:T.sans, fontSize:13, fontWeight:600, color:'#fff', background:T.grad, border:'none', borderRadius:8, padding:'8px 20px', cursor:'pointer', boxShadow:'0 4px 20px rgba(124,58,237,0.4)', transition:'all 0.2s' }} onMouseEnter={e=>{e.target.style.boxShadow='0 6px 28px rgba(124,58,237,0.6)';e.target.style.transform='translateY(-1px)'}} onMouseLeave={e=>{e.target.style.boxShadow='0 4px 20px rgba(124,58,237,0.4)';e.target.style.transform='none'}}>Create free account</button>
             </SignUpButton>
           </>
         )}
@@ -436,6 +436,12 @@ function Hero({ navigate, runDemo, ticker, setTicker, loading, progress, progres
               </span>
             ))}
           </div>
+          {/* Zero-friction sample path */}
+          {!loading && (
+            <div style={{ marginTop:10 }}>
+              <button onClick={()=>handleGenerate('AAPL')} style={{ background:'none', border:'none', cursor:'pointer', fontFamily:T.mono, fontSize:10, color:T.text3, textDecoration:'underline', textDecorationColor:'rgba(255,255,255,0.18)', textUnderlineOffset:3, padding:0, transition:'color 0.15s' }} onMouseEnter={e=>e.target.style.color='rgba(167,139,250,0.85)'} onMouseLeave={e=>e.target.style.color=T.text3}>or see a live AAPL report →</button>
+            </div>
+          )}
         </div>
 
         {/* ── Right: mockup with parallax ── */}
@@ -885,7 +891,7 @@ function FinalCTA({ navigate }) {
           ) : (
             <>
               <SignUpButton mode="modal">
-                <GradBtn style={{ fontSize:14, padding:'16px 40px' }}>Generate a free report →</GradBtn>
+                <GradBtn style={{ fontSize:14, padding:'16px 40px' }}>Create free account →</GradBtn>
               </SignUpButton>
               <SignInButton mode="modal">
                 <button style={{ background:'transparent', color:T.text2, fontFamily:T.mono, fontSize:13, padding:'16px 28px', borderRadius:10, border:`1px solid ${T.border2}`, cursor:'pointer', transition:'all 0.15s', backdropFilter:'blur(10px)' }} onMouseEnter={e=>{e.target.style.borderColor='rgba(124,58,237,0.4)';e.target.style.color=T.text}} onMouseLeave={e=>{e.target.style.borderColor=T.border2;e.target.style.color=T.text2}}>Sign in</button>
