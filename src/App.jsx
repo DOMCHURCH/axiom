@@ -129,13 +129,14 @@ export default function App() {
     const rec = report.structured?.recommendation
     return (
       <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.sans }} className="axiom-report-root">
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}@media print{.no-print{display:none!important}.axiom-report-root{background:#fff!important}body{background:#fff!important}@page{margin:14mm}}`}</style>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}@media print{.no-print{display:none!important}.axiom-report-root{background:#fff!important}body{background:#fff!important}@page{margin:14mm}}.axiom-btn:active{transform:scale(0.96);opacity:0.85;}`}</style>
 
         <header className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: 52, borderBottom: `1px solid ${T.border}`, background: T.bg2, position: 'sticky', top: 0, zIndex: 50 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
             <div style={{ fontFamily: T.mono, fontSize: 14, fontWeight: 700, color: T.accent, letterSpacing: 3, marginRight: 20 }}>AXIOM</div>
             <div style={{ width: 1, height: 28, background: T.border, marginRight: 16 }} />
             <button
+              className="axiom-btn"
               onClick={() => { setReport(null); setTicker(''); setTimeout(() => inputRef.current?.focus(), 50) }}
               style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2, background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0', display: 'flex', alignItems: 'center', gap: 6 }}
               onMouseEnter={e => e.currentTarget.style.color = T.text}
@@ -156,7 +157,7 @@ export default function App() {
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {usage?.isAdmin && reportId && (
-              <button onClick={() => {
+              <button className="axiom-btn" onClick={() => {
                 navigator.clipboard.writeText(`${window.location.origin}/report/${reportId}`)
                 setCopied(true); setTimeout(() => setCopied(false), 2000)
               }} style={{ fontFamily: T.mono, fontSize: 11, color: copied ? T.green : T.muted2, background: copied ? T.green + '15' : 'transparent', border: `1px solid ${copied ? T.green + '44' : T.border}`, borderRadius: 5, padding: '6px 14px', cursor: 'pointer', transition: 'all 0.2s' }}>
@@ -164,7 +165,7 @@ export default function App() {
               </button>
             )}
             {usage?.isAdmin ? (
-              <button onClick={() => exportReportPDF(currentTicker)} style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, background: T.accentLo, border: `1px solid ${T.accentBd}`, borderRadius: 5, padding: '6px 14px', cursor: 'pointer' }}>
+              <button className="axiom-btn" onClick={() => exportReportPDF(currentTicker, report, financials || {})} style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, background: T.accentLo, border: `1px solid ${T.accentBd}`, borderRadius: 5, padding: '6px 14px', cursor: 'pointer' }}>
                 ⤓ Export PDF
               </button>
             ) : (
@@ -214,7 +215,7 @@ export default function App() {
             )
           )}
           {clerkEnabled && isSignedIn && (
-            <button onClick={() => navigate('/account')} style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 4, padding: '5px 12px', cursor: 'pointer', transition: 'color 0.15s' }}
+            <button className="axiom-btn" onClick={() => navigate('/account')} style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 4, padding: '5px 12px', cursor: 'pointer', transition: 'color 0.15s' }}
               onMouseEnter={e => e.target.style.color = T.text}
               onMouseLeave={e => e.target.style.color = T.muted2}
             >Account</button>
@@ -265,6 +266,7 @@ export default function App() {
                     style={{ flex: 1, background: 'transparent', border: 'none', padding: '18px 16px', color: T.text, fontFamily: T.mono, fontSize: 16, outline: 'none' }}
                   />
                   <button
+                    className="axiom-btn"
                     type="submit"
                     disabled={loading || !ticker.trim() || (usage && usage.remaining === 0)}
                     style={{ background: loading || !ticker.trim() || (usage && usage.remaining === 0) ? T.bg3 : T.accent, color: loading || !ticker.trim() || (usage && usage.remaining === 0) ? T.muted : '#000', border: 'none', padding: '0 28px', fontFamily: T.mono, fontSize: 12, fontWeight: 700, cursor: loading || !ticker.trim() || (usage && usage.remaining === 0) ? 'not-allowed' : 'pointer', letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.15s', whiteSpace: 'nowrap' }}
