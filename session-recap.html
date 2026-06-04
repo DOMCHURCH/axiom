@@ -22,7 +22,7 @@
     .hero {
       background: linear-gradient(160deg, #0f172a 0%, #0a0a0a 60%);
       border-bottom: 1px solid #1e293b;
-      padding: 72px 24px 56px;
+      padding: clamp(40px, 8vw, 72px) 16px clamp(32px, 6vw, 56px);
       text-align: center;
     }
     .hero-label {
@@ -61,14 +61,14 @@
     .meta-item strong { color: #94a3b8; }
 
     /* ── LAYOUT ── */
-    .container { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+    .container { max-width: 860px; margin: 0 auto; padding: 0 16px; }
 
     /* ── SECTION HEADER ── */
     .section-header {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin: 56px 0 24px;
+      margin: 48px 0 20px;
     }
     .section-number {
       font-family: 'IBM Plex Mono', monospace;
@@ -81,7 +81,7 @@
       white-space: nowrap;
     }
     .section-header h2 {
-      font-size: 20px;
+      font-size: clamp(16px, 4vw, 20px);
       font-weight: 700;
       color: #f1f5f9;
     }
@@ -92,7 +92,7 @@
       background: #111;
       border: 1px solid #1e293b;
       border-radius: 10px;
-      padding: 20px 24px;
+      padding: 16px 18px;
       margin-bottom: 12px;
     }
     .card-title {
@@ -161,31 +161,34 @@
       background: #0f172a;
       border: 1px solid #1e293b;
       border-radius: 8px;
-      padding: 16px;
+      padding: 14px;
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 12px;
+      font-size: 11px;
       color: #7dd3fc;
       overflow-x: auto;
       margin: 10px 0;
+      -webkit-overflow-scrolling: touch;
+      white-space: pre;
     }
 
     /* ── FILE GRID ── */
     .file-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 8px;
     }
     .file-card {
       background: #0f172a;
       border: 1px solid #1e293b;
       border-radius: 8px;
-      padding: 14px 16px;
+      padding: 12px 14px;
     }
     .file-name {
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 12px;
+      font-size: 11px;
       color: #38bdf8;
       margin-bottom: 4px;
+      word-break: break-all;
     }
     .file-desc {
       font-size: 12px;
@@ -215,7 +218,7 @@
       border: 1px solid rgba(248,113,113,.2);
       border-left: 3px solid #f87171;
       border-radius: 8px;
-      padding: 16px 20px;
+      padding: 14px 16px;
       margin-bottom: 12px;
     }
     .lesson-box.good {
@@ -235,7 +238,8 @@
     }
 
     /* ── STATUS TABLE ── */
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 480px; }
     th {
       text-align: left;
       font-family: 'IBM Plex Mono', monospace;
@@ -265,17 +269,57 @@
     .dot-red   { background: #f87171; }
     .dot-blue  { background: #38bdf8; }
 
+    /* ── PR LIST (mobile-friendly stacked list) ── */
+    .pr-list { display: flex; flex-direction: column; gap: 10px; }
+    .pr-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .pr-item .badge { flex-shrink: 0; margin-right: 0; margin-top: 1px; }
+    .pr-item-content { flex: 1; min-width: 0; }
+    .pr-branch {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: #38bdf8;
+      word-break: break-all;
+    }
+    .pr-note { font-size: 12px; color: #64748b; margin-top: 2px; }
+
     /* ── FOOTER ── */
     footer {
       text-align: center;
-      margin-top: 80px;
-      padding-top: 32px;
+      margin-top: 64px;
+      padding: 24px 16px 40px;
       border-top: 1px solid #1e293b;
       font-family: 'IBM Plex Mono', monospace;
       font-size: 11px;
       color: #334155;
     }
-    footer span { color: #475569; }
+    footer span { color: #475569; display: block; margin-top: 4px; }
+
+    /* ── MOBILE ── */
+    @media (max-width: 600px) {
+      .hero { padding: 48px 16px 36px; }
+      .hero p { font-size: 14px; }
+      .meta-row { gap: 16px; }
+      .meta-item { font-size: 11px; }
+      .section-header { margin: 36px 0 16px; }
+      .timeline { padding-left: 22px; }
+      .timeline-item::before { left: -17px; width: 8px; height: 8px; }
+      .tl-title { font-size: 14px; }
+      .tl-body { font-size: 13px; }
+      .file-grid { grid-template-columns: 1fr 1fr; }
+      pre { font-size: 10px; padding: 12px; }
+      td, th { padding: 8px 10px; }
+    }
+    @media (max-width: 380px) {
+      .file-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -536,13 +580,49 @@
     </div>
   </div>
 
-  <div style="margin-bottom: 16px;">
-    <span class="badge badge-red">PR #1</span> <code>merge/apply-improvements</code> — main feature merge that failed to auto-merge<br><br>
-    <span class="badge badge-amber">PR #2</span> <code>fix/build-and-sharing</code> — should have been a commit on the same branch<br><br>
-    <span class="badge badge-amber">PR #3</span> <code>fix/report-prose-and-histogram</code> — should have been a commit on the same branch<br><br>
-    <span class="badge badge-amber">PR #4</span> <code>restore/rich-landing-page</code> — should have been a commit on the same branch<br><br>
-    <span class="badge badge-amber">PR #5</span> <code>restore/backend-admin-and-data-fixes</code> — should have been a commit on the same branch<br><br>
-    <span class="badge badge-slate">PR #6</span> One more that should never have existed
+  <div class="pr-list" style="margin-bottom: 16px;">
+    <div class="pr-item">
+      <span class="badge badge-red">PR #1</span>
+      <div class="pr-item-content">
+        <div class="pr-branch">merge/apply-improvements</div>
+        <div class="pr-note">Main feature merge that failed to auto-merge — the root cause of everything</div>
+      </div>
+    </div>
+    <div class="pr-item">
+      <span class="badge badge-amber">PR #2</span>
+      <div class="pr-item-content">
+        <div class="pr-branch">fix/build-and-sharing</div>
+        <div class="pr-note">Should have been a commit on the same branch</div>
+      </div>
+    </div>
+    <div class="pr-item">
+      <span class="badge badge-amber">PR #3</span>
+      <div class="pr-item-content">
+        <div class="pr-branch">fix/report-prose-and-histogram</div>
+        <div class="pr-note">Should have been a commit on the same branch</div>
+      </div>
+    </div>
+    <div class="pr-item">
+      <span class="badge badge-amber">PR #4</span>
+      <div class="pr-item-content">
+        <div class="pr-branch">restore/rich-landing-page</div>
+        <div class="pr-note">Should have been a commit on the same branch</div>
+      </div>
+    </div>
+    <div class="pr-item">
+      <span class="badge badge-amber">PR #5</span>
+      <div class="pr-item-content">
+        <div class="pr-branch">restore/backend-admin-and-data-fixes</div>
+        <div class="pr-note">Should have been a commit on the same branch</div>
+      </div>
+    </div>
+    <div class="pr-item">
+      <span class="badge badge-slate">PR #6</span>
+      <div class="pr-item-content">
+        <div class="pr-branch">(unnamed)</div>
+        <div class="pr-note">One more that should never have existed</div>
+      </div>
+    </div>
   </div>
 
   <div class="lesson-box">
@@ -588,7 +668,8 @@ git push -u origin claude/cool-keller-j5trK</pre>
     </div>
   </div>
 
-  <table style="margin-top: 12px; background: #111; border: 1px solid #1e293b; border-radius: 10px; overflow: hidden;">
+  <div class="table-wrap" style="margin-top: 12px; background: #111; border: 1px solid #1e293b; border-radius: 10px;">
+  <table>
     <thead>
       <tr>
         <th>Branch</th>
@@ -609,6 +690,7 @@ git push -u origin claude/cool-keller-j5trK</pre>
       </tr>
     </tbody>
   </table>
+  </div>
 
   <div class="card" style="margin-top: 12px;">
     <div class="card-body">
@@ -627,7 +709,8 @@ git push -u origin claude/cool-keller-j5trK</pre>
     <div class="divider"></div>
   </div>
 
-  <table style="background: #111; border: 1px solid #1e293b; border-radius: 10px; overflow: hidden;">
+  <div class="table-wrap" style="background: #111; border: 1px solid #1e293b; border-radius: 10px;">
+  <table>
     <thead>
       <tr>
         <th>Task</th>
@@ -663,6 +746,7 @@ git push -u origin claude/cool-keller-j5trK</pre>
       </tr>
     </tbody>
   </table>
+  </div>
 
 
   <!-- ── 7. CURRENT PRODUCTION STATE ── -->
