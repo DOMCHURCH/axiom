@@ -19,6 +19,8 @@ Cash: ${dollar(fin.cash)} | Total Assets: ${dollar(fin.totalAssets)} | Equity: $
 LT Debt: ${dollar(fin.longTermDebt)} | Net Debt: ${dollar(fin.netDebt)} | Current Ratio: ${fin.currentRatio != null ? fin.currentRatio.toFixed(2) + 'x' : 'N/A'}
 D/E: ${fin.debtToEquity != null ? fin.debtToEquity.toFixed(2) + 'x' : 'N/A'} | Int Coverage: ${fin.interestCoverage != null ? fin.interestCoverage.toFixed(1) + 'x' : 'N/A'} | ROE: ${pct(fin.roe)} | ROA: ${pct(fin.roa)}
 Op CF: ${dollar(fin.operatingCF)} | CapEx: ${dollar(fin.capex)} | FCF: ${dollar(fin.fcf)} | FCF Margin: ${pct(fin.fcfMargin)}
+FCF ex-SBC: ${dollar(fin.fcfExSbc)} | SBC: ${dollar(fin.sbc)} | R&D: ${dollar(fin.rnd)} | SG&A: ${dollar(fin.sga)}
+PP&E: ${dollar(fin.ppe)} | Tax Rate: ${fin.impliedTaxRate != null ? pct(fin.impliedTaxRate) : 'N/A'} | Employees: ${fin.employees != null ? fin.employees.toLocaleString() : 'N/A'} | Rev/Employee: ${dollar(fin.revenuePerEmployee)}
 Dividends: ${dollar(fin.dividendsPaid)} | Buybacks: ${dollar(fin.shareRepurchases)} | Shares: ${fin.shares != null ? (fin.shares / 1e6).toFixed(1) + 'M' : 'N/A'}`
 
   onProgress?.('Analyzing — generating research...')
