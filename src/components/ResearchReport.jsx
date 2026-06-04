@@ -225,10 +225,10 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
   const revSeries = (fin.revenueHistory || []).slice().reverse()
 
   const s = {
-    root: { maxWidth: 980, margin: '0 auto', padding: '40px 24px 80px', fontFamily: C.sans, color: '#e5e5e5' },
-    grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
-    grid3: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 },
-    grid4: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 },
+    root: { maxWidth: 980, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(12px, 4vw, 24px) 80px', fontFamily: C.sans, color: '#e5e5e5' },
+    grid2: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 },
+    grid3: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 },
+    grid4: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 12 },
     body: { fontSize: 14, lineHeight: 1.75, color: '#9ca3af' },
     ul: { listStyle: 'none', padding: 0, margin: 0 },
     li: { display: 'flex', gap: 10, padding: '10px 0', borderBottom: `1px solid ${C.border}`, fontSize: 14, color: '#9ca3af', lineHeight: 1.6, alignItems: 'flex-start' },
@@ -335,7 +335,7 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
       {d.financialHighlights && (
         <Panel style={{ marginBottom: 16 }}>
           <SectionHeader>Financial Highlights</SectionHeader>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 20 }}>
             {[
               ['Revenue', d.financialHighlights.revenueGrowthComment],
               ['Margins', d.financialHighlights.marginComment],
@@ -645,25 +645,23 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
           <div style={{ display: 'grid', gap: 10 }}>
             {d.risks.map((risk, i) => (
               <div key={i} style={{
-                display: 'grid', gridTemplateColumns: '72px auto 1fr',
-                gap: 16, alignItems: 'start',
                 padding: '14px 16px', borderRadius: 6,
                 background: SEV_COLOR[risk.severity] + '08',
                 border: `1px solid ${SEV_COLOR[risk.severity]}20`,
               }}>
-                <div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
                   <Badge label={risk.severity} color={SEV_COLOR[risk.severity]} />
-                </div>
-                <div>
-                  {risk.category && (
-                    <div style={{
-                      fontFamily: C.mono, fontSize: 9, color: RISK_CAT_COLOR[risk.category] || C.muted,
-                      textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4,
-                    }}>
-                      {risk.category}
-                    </div>
-                  )}
-                  <div style={{ fontWeight: 600, fontSize: 13, color: '#e5e5e5', whiteSpace: 'nowrap' }}>{risk.title}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {risk.category && (
+                      <div style={{
+                        fontFamily: C.mono, fontSize: 9, color: RISK_CAT_COLOR[risk.category] || C.muted,
+                        textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3,
+                      }}>
+                        {risk.category}
+                      </div>
+                    )}
+                    <div style={{ fontWeight: 600, fontSize: 13, color: '#e5e5e5', wordBreak: 'break-word' }}>{risk.title}</div>
+                  </div>
                 </div>
                 <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.6 }}>{fixProse(risk.description)}</div>
               </div>
