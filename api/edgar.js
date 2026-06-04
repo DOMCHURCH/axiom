@@ -1,5 +1,26 @@
 const UA = 'AXIOM/1.0 research@axiom.app'
 
+// Module-level cache for the SEC ticker map — identical for every ticker, so
+// re-downloading it (200KB–1MB) on each request is pure waste. Persists across
+// warm serverless invocations; TTL guards against the map going stale (~daily).
+let _tickerMapCache = null
+let _tickerMapAt = 0
+const TICKER_MAP_TTL = 6 * 60 * 60 * 1000 // 6h
+
+async function getTickerMap() {
+  if (_tickerMapCache && Date.now() - _tickerMapAt < TICKER_MAP_TTL) {
+    return _tickerMapCache
+  }
+  const res = await fetch('https://www.sec.gov/files/company_tickers_exchange.json', {
+    headers: { 'User-Agent': UA },
+  })
+  if (!res.ok) throw new Error('Failed to reach SEC EDGAR')
+  const map = await res.json()
+  _tickerMapCache = map
+  _tickerMapAt = Date.now()
+  return map
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
@@ -12,11 +33,8 @@ export default async function handler(req, res) {
     const t = ticker.trim().toUpperCase()
 
     // Use the company_tickers_exchange.json (smaller, ~200KB vs 1MB for company_tickers.json)
-    const tickerMapRes = await fetch('https://www.sec.gov/files/company_tickers_exchange.json', {
-      headers: { 'User-Agent': UA },
-    })
-    if (!tickerMapRes.ok) throw new Error('Failed to reach SEC EDGAR')
-    const tickerMap = await tickerMapRes.json()
+    // Served from module cache after the first request on a warm instance.
+    const tickerMap = await getTickerMap()
 
     let cik = null
     let companyName = t
@@ -203,6 +221,12 @@ export default async function handler(req, res) {
     const fcfMargin = revenue && fcf != null ? fcf / revenue : null
     const revenueHistory = revenues
 
+    // Fundamentals change only on new filings (quarterly), but this response
+    // also embeds the live price, so we cap freshness at 15min: popular tickers
+    // (AAPL, NVDA, ...) get ~1 EDGAR fetch per 15min instead of one per request
+    // — a >99% load reduction at any real volume — while the price stays fresh
+    // enough for a research note. 1h stale-while-revalidate hides cold fetches.
+    res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600')
     res.status(200).json({
       financials: {
         ticker: t,
