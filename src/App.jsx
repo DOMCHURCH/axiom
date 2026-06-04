@@ -4,6 +4,7 @@ import { UserButton, SignInButton, useUser, useAuth } from '@clerk/clerk-react'
 import ResearchReport from './components/ResearchReport.jsx'
 import { saveToHistory, loadHistory } from './lib/storage.js'
 import { generateResearch } from './lib/ai.js'
+import { exportReportPDF } from './lib/exportPDF.js'
 
 const T = {
   bg:      '#05080f',
@@ -54,6 +55,8 @@ export default function App() {
   const [currentTicker, setCurrentTicker] = useState('')
   const [history, setHistory] = useState([])
   const [usage, setUsage] = useState(null)
+  const [reportId, setReportId] = useState(null)
+  const [copied, setCopied] = useState(false)
   const inputRef = useRef(null)
   const { isSignedIn } = useUser()
   const { getToken } = useAuth()
@@ -90,7 +93,7 @@ export default function App() {
     if (!t?.trim() || loading) return
     if (!isSignedIn) { setError('Sign in to run reports — it\'s free.'); return }
     const sym = t.trim().toUpperCase()
-    setLoading(true); setError(''); setReport(null); setFinancials(null); setProgressPct(10)
+    setLoading(true); setError(''); setReport(null); setFinancials(null); setReportId(null); setProgressPct(10)
     try {
       setProgress('Fetching SEC EDGAR filings...')
       const edgarRes = await fetch(`/api/edgar?ticker=${encodeURIComponent(sym)}`)

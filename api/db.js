@@ -41,7 +41,16 @@ export async function incrementUsage(userId) {
 }
 
 export async function saveReport(userId, ticker, result) {
-  await sql`INSERT INTO reports (user_id, ticker, result) VALUES (${userId}, ${ticker}, ${JSON.stringify(result)})`
+  const rows = await sql`
+    INSERT INTO reports (user_id, ticker, result) VALUES (${userId}, ${ticker}, ${JSON.stringify(result)})
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+export async function getReport(id) {
+  const rows = await sql`SELECT id, ticker, result, created_at FROM reports WHERE id = ${id}`
+  return rows[0] || null
 }
 
 export async function getReports(userId) {
