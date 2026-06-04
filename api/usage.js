@@ -10,16 +10,25 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
 
+  if (!process.env.DATABASE_URL) return res.status(503).json({ error: 'Database not configured.' })
+
   const userId = await verifyClerkToken(req)
   if (!userId) return res.status(401).json({ error: 'Unauthorized' })
 
-  await initDb()
-  const usage = await getUsage(userId)
-
-  return res.status(200).json({
-    used: usage.report_count,
-    limit: FREE_LIMIT,
-    remaining: Math.max(0, FREE_LIMIT - usage.report_count),
-    resetAt: usage.reset_at,
-  })
+  try {
+    await initDb()
+    const usage = await getUsage(userId)
+    const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').filter(Boolean)
+    const isAdmin = adminIds.includes(userId)
+    return res.status(200).json({
+      used: usage.report_count,
+      limit: isAdmin ? Infinity : FREE_LIMIT,
+      remaining: isAdmin ? Infinity : Math.max(0, FREE_LIMIT - usage.report_count),
+      resetAt: usage.reset_at,
+      isAdmin,
+    })
+  } catch (err) {
+    console.error('Usage error:', err)
+    return res.status(503).json({ error: 'Database connection failed.' })
+  }
 }

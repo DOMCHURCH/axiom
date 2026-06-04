@@ -52,7 +52,10 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Could not verify usage. Please try again.' })
   }
 
-  if (usage.report_count >= FREE_LIMIT) {
+  const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').filter(Boolean)
+  const isAdmin = adminIds.includes(userId)
+
+  if (!isAdmin && usage.report_count >= FREE_LIMIT) {
     return res.status(429).json({
       error: `You've used your ${FREE_LIMIT} free reports this month. Pro plan coming soon — check back shortly.`,
       limitReached: true,
