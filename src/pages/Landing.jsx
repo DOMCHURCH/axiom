@@ -331,7 +331,13 @@ function Nav({ navigate }) {
             </SignUpButton>
           </>
         )}
-        {clerkEnabled && isSignedIn && <UserButton afterSignOutUrl="/" />}
+        {clerkEnabled && isSignedIn && (
+          <UserButton afterSignOutUrl="/">
+            <UserButton.MenuItems>
+              <UserButton.Action label="My Reports" labelIcon={<span>📊</span>} onClick={() => navigate('/account')} />
+            </UserButton.MenuItems>
+          </UserButton>
+        )}
       </div>
     </nav>
   )

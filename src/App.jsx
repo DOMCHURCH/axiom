@@ -41,7 +41,14 @@ function Spinner() {
 
 function AppUserButton() {
   const { isSignedIn } = useUser()
-  if (isSignedIn) return <UserButton afterSignOutUrl="/" appearance={{ variables: { colorPrimary: T.accent } }} />
+  const navigate = useNavigate()
+  if (isSignedIn) return (
+    <UserButton afterSignOutUrl="/" appearance={{ variables: { colorPrimary: T.accent } }}>
+      <UserButton.MenuItems>
+        <UserButton.Action label="My Reports" labelIcon={<span>📊</span>} onClick={() => navigate('/account')} />
+      </UserButton.MenuItems>
+    </UserButton>
+  )
   return (
     <SignInButton mode="modal">
       <button style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 6, padding: '6px 14px', cursor: 'pointer', transition: 'all 0.15s' }}
