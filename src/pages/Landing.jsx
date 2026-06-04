@@ -177,23 +177,27 @@ function GradBtn({ children, onClick, style, ...props }) {
 }
 
 // ─── Ticker strip ─────────────────────────────────────────────────────────────
-const TICKERS = [
-  { sym: 'AAPL', chg: +1.24, price: 213.48 }, { sym: 'NVDA', chg: +3.81, price: 875.20 },
-  { sym: 'MSFT', chg: -0.42, price: 418.73 }, { sym: 'GOOGL', chg: +0.97, price: 182.91 },
-  { sym: 'META', chg: +2.13, price: 521.34 }, { sym: 'AMZN', chg: -0.88, price: 195.67 },
-  { sym: 'TSLA', chg: -1.54, price: 248.10 }, { sym: 'JPM', chg: +0.66, price: 209.84 },
-  { sym: 'NFLX', chg: +1.78, price: 684.30 }, { sym: 'AMD', chg: -2.11, price: 163.48 },
-]
+const TICKER_SYMS = ['AAPL','NVDA','MSFT','GOOGL','META','AMZN','TSLA','JPM','NFLX','AMD']
 function TickerStrip() {
-  const items = [...TICKERS, ...TICKERS, ...TICKERS]
+  const [quotes, setQuotes] = useState([])
+  useEffect(() => {
+    fetch(`/api/quotes?tickers=${TICKER_SYMS.join(',')}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.quotes?.length) setQuotes(d.quotes) })
+      .catch(() => {})
+  }, [])
+
+  // Only render once we have data — avoids a flash of empty strip
+  if (quotes.length === 0) return null
+  const items = [...quotes, ...quotes, ...quotes]
   return (
     <div style={{ overflow: 'hidden', padding: '12px 0', borderTop: `1px solid ${T.border}`, borderBottom: `1px solid ${T.border}`, background: 'rgba(255,255,255,0.02)', WebkitMaskImage: 'linear-gradient(90deg,transparent,black 6%,black 94%,transparent)', maskImage: 'linear-gradient(90deg,transparent,black 6%,black 94%,transparent)' }}>
       <div style={{ display: 'flex', animation: 'ticker 50s linear infinite', width: 'max-content' }}>
         {items.map((t, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 28px', whiteSpace: 'nowrap', borderRight: `1px solid ${T.border}` }}>
             <span style={{ fontFamily: T.mono, fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: 1 }}>{t.sym}</span>
-            <span style={{ fontFamily: T.mono, fontSize: 11, color: T.text3 }}>${t.price.toFixed(2)}</span>
-            <span style={{ fontFamily: T.mono, fontSize: 10, color: t.chg >= 0 ? T.green : T.red, fontWeight: 700 }}>{t.chg >= 0 ? '▲' : '▼'} {Math.abs(t.chg).toFixed(2)}%</span>
+            {t.price != null && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.text3 }}>${t.price.toFixed(2)}</span>}
+            {t.chg != null && <span style={{ fontFamily: T.mono, fontSize: 10, color: t.chg >= 0 ? T.green : T.red, fontWeight: 700 }}>{t.chg >= 0 ? '▲' : '▼'} {Math.abs(t.chg).toFixed(2)}%</span>}
           </div>
         ))}
       </div>
@@ -215,7 +219,7 @@ function ReportMockup() {
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#febc2e' }} />
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28c840' }} />
         </div>
-        <span style={{ fontSize: 10, color: T.text3, letterSpacing: 0.5 }}>axiom — NVDA research report</span>
+        <span style={{ fontSize: 10, color: T.text3, letterSpacing: 0.5 }}>axiom — NVDA report <span style={{ opacity:0.5 }}>(illustrative)</span></span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 4, padding: '3px 9px' }}>
           <div style={{ width: 5, height: 5, borderRadius: '50%', background: T.green, boxShadow: `0 0 8px ${T.green}` }} />
           <span style={{ fontSize: 9, color: T.green, fontWeight: 700, letterSpacing: 1.2 }}>BUY</span>
@@ -740,7 +744,7 @@ function DemoSection() {
               ['✓','OperatingIncomeLoss $32.9B',T.green],
               ['✓','StockholdersEquity $42.9B',T.green],
               ['✓','NetCashProvidedByOperating $28.1B',T.green],
-              ['→','Live price: $875.20',T.text3],
+              ['→','Live price: fetched from Yahoo Finance',T.text3],
               ['✓','28 financial fields extracted',T.green],
             ].map(([p,l,c],i)=>(
               <div key={i} style={{ display:'flex', gap:14 }}>

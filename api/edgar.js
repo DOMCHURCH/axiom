@@ -149,6 +149,19 @@ export default async function handler(req, res) {
     const sharesBasic = latest(['WeightedAverageNumberOfSharesOutstandingBasic'], 'shares')
     const shares = sharesDiluted ?? sharesBasic
 
+    // Operating expenses (detail)
+    const rnd = latest(['ResearchAndDevelopmentExpense'])
+    const sga = latest(['SellingGeneralAndAdministrativeExpense', 'GeneralAndAdministrativeExpense'])
+    const sbc = latest(['ShareBasedCompensation', 'AllocatedShareBasedCompensationExpense'])
+    const ppe = latest(['PropertyPlantAndEquipmentNet'])
+    const incomeTax = latest(['IncomeTaxesPaid', 'IncomeTaxExpenseBenefit'])
+    const preTaxIncome = latest(['IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest'])
+    const impliedTaxRate = preTaxIncome && incomeTax && preTaxIncome > 0 ? incomeTax / preTaxIncome : null
+    const employees = latest(['EntityNumberOfEmployees'], 'pure')
+    const revenuePerEmployee = revenue && employees ? revenue / employees : null
+    // SBC-adjusted FCF (what sophisticated investors use)
+    const fcfExSbc = fcf != null && sbc != null ? fcf - sbc : null
+
     // ── Prior-year values for Piotroski F-Score (YoY comparisons) ──
     const [, pNetIncome] = latestTwo(['NetIncomeLoss'])
     const [, pTotalAssets] = latestTwo(['Assets'])
@@ -253,11 +266,20 @@ export default async function handler(req, res) {
         roa,
         retainedEarnings,
         workingCapital,
+        // Operating expenses (detail)
+        rnd,
+        sga,
+        sbc,
+        ppe,
+        impliedTaxRate,
+        employees,
+        revenuePerEmployee,
         // Cash flow
         operatingCF,
         capex,
         fcf,
         fcfMargin,
+        fcfExSbc,
         dividendsPaid,
         shareRepurchases,
         // Shares
