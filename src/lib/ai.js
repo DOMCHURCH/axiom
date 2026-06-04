@@ -31,9 +31,11 @@ DATA:
 ${dataBlock}
 
 CRITICAL FORMATTING RULES:
-- All rates/margins/growth/yields MUST be decimals: 0.15 = 15%, 0.08 = 8%, 0.025 = 2.5%. NEVER use whole-number percentages.
+- JSON NUMERIC FIELDS (dcfAssumptions, comps revenueGrowth/grossMargin, tradingMultiples fcfYield, upside): use decimals. 0.15 = 15%, 0.08 = 8%. NEVER whole-number percentages in these fields.
+- PROSE TEXT FIELDS (executiveSummary, investmentThesis, bullCase, bearCase, analystNote, financialHighlights, companyDescription, catalysts, risks description): ALWAYS write percentages as formatted strings like "15.9%", "17% upside", "8.5% WACC". NEVER use bare decimals like 0.159 or 0.17 in prose text.
 - Multiples (EV/EBITDA, P/E) are plain numbers: 24.5 means 24.5x. Realistic ranges: EV/EBITDA 5-50x, P/E 10-100x.
-- upside is a decimal: 0.15 = 15% upside. NEVER return 15 for 15%.
+- upside field is a decimal: 0.15 = 15% upside. targetPrice is a dollar amount anchored to the live market price above.
+- DCF assumptions must be realistic for the sector. For high-multiple tech stocks, use nearTermGrowth 0.10-0.20, longTermGrowth 0.06-0.10, terminalGrowthRate 0.025-0.03, wacc 0.08-0.10.
 
 NARRATIVE ACCURACY RULES (prevent self-contradiction — the platform computes valuation multiples and DCF separately from live data):
 - In PROSE, do NOT state specific valuation multiples (e.g. "EV/EBITDA of 24.5", "trades at 30x P/E"). The platform computes these from the live price and your guess will contradict it. Instead speak qualitatively: "trades at a premium multiple", "valuation is reasonable relative to peers".
