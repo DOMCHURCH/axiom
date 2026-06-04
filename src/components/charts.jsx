@@ -146,18 +146,23 @@ export function ScoreGauge({ value, max, color, label, sublabel }) {
 }
 
 // ── Histogram: Monte Carlo distribution ──
-export function Histogram({ histogram, current, median, height = 90 }) {
+export function Histogram({ histogram, current, median, p10, p90, height = 90 }) {
   if (!histogram || histogram.length === 0) return null
   const maxCount = Math.max(...histogram.map(b => b.count)) || 1
-  const min = histogram[0].x
-  const max = histogram[histogram.length - 1].x
-  const range = max - min || 1
-  const scaleX = v => ((v - min) / range) * 100
+
+  // Use P10/P90 as display range to hide extreme tails; fall back to full range
+  const displayMin = p10 ?? histogram[0].x
+  const displayMax = p90 ?? histogram[histogram.length - 1].x
+  const range = displayMax - displayMin || 1
+  const scaleX = v => Math.max(0, Math.min(100, ((v - displayMin) / range) * 100))
+
+  // Only render bins that fall within the display range
+  const visible = histogram.filter(b => b.x + (histogram[1]?.x - histogram[0]?.x || 0) >= displayMin && b.x <= displayMax)
 
   return (
     <div style={{ width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1.5, height, position: 'relative' }}>
-        {histogram.map((b, i) => {
+        {visible.map((b, i) => {
           const aboveCurrent = current != null && b.x >= current
           return (
             <div key={i} style={{
@@ -165,7 +170,7 @@ export function Histogram({ histogram, current, median, height = 90 }) {
               height: `${(b.count / maxCount) * 100}%`,
               minHeight: b.count > 0 ? 2 : 0,
               background: aboveCurrent ? C.positive : C.negative,
-              opacity: 0.55,
+              opacity: 0.6,
               borderRadius: '1px 1px 0 0',
             }} />
           )
@@ -175,11 +180,16 @@ export function Histogram({ histogram, current, median, height = 90 }) {
           <div style={{ position: 'absolute', left: `${scaleX(median)}%`, top: 0, bottom: 0,
             width: 1.5, background: C.accent }} />
         )}
+        {/* current price marker */}
+        {current != null && current >= displayMin && current <= displayMax && (
+          <div style={{ position: 'absolute', left: `${scaleX(current)}%`, top: 0, bottom: 0,
+            width: 1, background: '#ffffff55', borderLeft: '1px dashed #ffffff55' }} />
+        )}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6,
         fontFamily: C.mono, fontSize: 10, color: C.muted }}>
-        <span>${min.toFixed(0)}</span>
-        <span>${max.toFixed(0)}</span>
+        <span>${displayMin.toFixed(0)}</span>
+        <span>${displayMax.toFixed(0)}</span>
       </div>
     </div>
   )
