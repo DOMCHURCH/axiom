@@ -30,7 +30,10 @@ export function fmtMultiple(n, decimals = 1) {
 }
 
 export function runDCF({ fcf, nearTermGrowth, longTermGrowth, terminalGrowth, wacc, shares, netDebt, nearTermYears = 3, totalYears = 8 }) {
-  if (!fcf || !wacc || wacc <= terminalGrowth) return null
+  // A constant-growth DCF is only meaningful for positive starting FCF — a
+  // negative base would compound into a negative "intrinsic value" that is
+  // nonsense to display. Skip it (the report shows a thin-data/loss note instead).
+  if (!fcf || fcf <= 0 || !wacc || wacc <= terminalGrowth) return null
 
   const projectedFCF = []
   let cf = fcf

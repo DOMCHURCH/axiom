@@ -450,6 +450,7 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
           <div style={{ fontSize: 12, color: C.muted2, marginBottom: 18, lineHeight: 1.6 }}>
             Implied per-share value across methodologies. Bars show low–high ranges; the dashed line marks
             {isLive ? ' the live market price' : ' the estimated price'}{d.targetPrice ? ' and the blue line the 12-month target' : ''}.
+            {(compEvEbitda.length >= 1 || compPe.length >= 1) && <> Comps-based bars use <span style={{ color: '#f59e0b' }}>AI-estimated</span> peer multiples; the DCF range is computed from SEC data.</>}
           </div>
           <FootballField methods={ffMethods} current={currentPrice} target={d.targetPrice} />
         </Panel>
@@ -613,6 +614,9 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
       {normalizedComps.length > 0 && (
         <Panel style={{ marginBottom: 16 }}>
           <SectionHeader>Comparable Company Analysis</SectionHeader>
+          <div style={{ fontSize: 12, color: C.muted2, marginBottom: 14, lineHeight: 1.6 }}>
+            Peer set and multiples are <span style={{ color: '#f59e0b' }}>AI-estimated</span> — directional context, not live market data. Verify against a primary source before relying on them.
+          </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: C.mono, fontSize: 13 }}>
               <thead>
@@ -731,6 +735,9 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
                       </span>
                     </div>
                   ))}
+                </div>
+                <div style={{ fontSize: 10, color: C.muted, marginTop: 10, lineHeight: 1.5, fontStyle: 'italic' }}>
+                  Calibrated for non-financial firms. Treat as indicative only for banks, insurers, and other financials.
                 </div>
               </div>
             )}

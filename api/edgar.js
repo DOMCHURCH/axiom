@@ -96,8 +96,11 @@ export default async function handler(req, res) {
             }
             return true
           })
-          .sort((a, b) => b.end.localeCompare(a.end))
-        // Deduplicate by fiscal year end (keep first/latest filing for each end date)
+          // Sort by period end (newest first), then by FILING date (newest first)
+          // so that for any restated/re-presented year we keep the most recent
+          // figure rather than the original — matches what a 10-K reader sees.
+          .sort((a, b) => b.end.localeCompare(a.end) || (b.filed || '').localeCompare(a.filed || ''))
+        // Deduplicate by fiscal year end (keep latest-filed value for each end date)
         const seen = new Set()
         const deduped = rows.filter(d => {
           if (seen.has(d.end)) return false
@@ -137,7 +140,8 @@ export default async function handler(req, res) {
     const ebit = operatingIncome
     const da = latest(['DepreciationDepletionAndAmortization', 'DepreciationAndAmortization'])
     const ebitda = (ebit != null && da != null) ? ebit + da : (ebit ?? null)
-    const eps = latest(['EarningsPerShareBasic', 'EarningsPerShareDiluted'], 'USD/shares')
+    // Diluted first — the conservative, valuation-standard figure (basic only as fallback)
+    const eps = latest(['EarningsPerShareDiluted', 'EarningsPerShareBasic'], 'USD/shares')
     const interestExpense = latest(['InterestExpense', 'InterestAndDebtExpense'])
 
     // Balance sheet
@@ -226,8 +230,9 @@ export default async function handler(req, res) {
     // Derived metrics
     const revenueGrowth = revenue != null && prevRevenue != null && prevRevenue !== 0
       ? (revenue - prevRevenue) / Math.abs(prevRevenue) : null
-    const revenueGrowth2y = revenue != null && revenue2yAgo != null && revenue2yAgo !== 0
-      ? (revenue - revenue2yAgo) / Math.abs(revenue2yAgo) / 2 : null  // CAGR approx
+    // True 2-year revenue CAGR (requires positive endpoints for a real compound rate)
+    const revenueGrowth2y = revenue != null && revenue2yAgo != null && revenue2yAgo > 0 && revenue > 0
+      ? Math.pow(revenue / revenue2yAgo, 1 / 2) - 1 : null
     const grossMargin = revenue && grossProfit != null ? grossProfit / revenue : null
     const ebitdaMargin = revenue && ebitda != null ? ebitda / revenue : null
     const operatingMargin = revenue && operatingIncome != null ? operatingIncome / revenue : null
@@ -237,7 +242,9 @@ export default async function handler(req, res) {
     const roa = totalAssets && netIncome ? netIncome / totalAssets : null
     const currentRatio = currentAssets && currentLiabilities ? currentAssets / currentLiabilities : null
     const debtToEquity = totalDebt && totalEquity ? totalDebt / totalEquity : null
-    const interestCoverage = interestExpense && ebit ? ebit / interestExpense : null
+    // Only meaningful when there's genuine interest expense. Cash-rich firms report
+    // net interest *income* (negative expense), which would yield a misleading ratio.
+    const interestCoverage = interestExpense > 0 && ebit != null ? ebit / interestExpense : null
     const fcfMargin = revenue && fcf != null ? fcf / revenue : null
     const revenueHistory = revenues
 
