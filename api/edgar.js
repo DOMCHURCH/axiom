@@ -31,6 +31,11 @@ export default async function handler(req, res) {
 
   try {
     const t = ticker.trim().toUpperCase()
+    // Validate shape before it ever reaches an outbound URL — blocks path
+    // injection (e.g. "AAPL/../v7/...") into the Yahoo request and bad lookups.
+    if (!/^[A-Z][A-Z.\-]{0,11}$/.test(t)) {
+      return res.status(400).json({ error: `Invalid ticker "${ticker}"` })
+    }
 
     // Use the company_tickers_exchange.json (smaller, ~200KB vs 1MB for company_tickers.json)
     // Served from module cache after the first request on a warm instance.
@@ -216,7 +221,7 @@ export default async function handler(req, res) {
     let price = null
     let marketCap = null
     try {
-      const yf = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=1d`, {
+      const yf = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?interval=1d&range=1d`, {
         headers: { 'User-Agent': 'Mozilla/5.0' },
       })
       if (yf.ok) {

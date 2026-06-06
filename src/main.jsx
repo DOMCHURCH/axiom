@@ -6,7 +6,6 @@ import Landing from './pages/Landing.jsx'
 import App from './App.jsx'
 import Account from './pages/Account.jsx'
 import ReportPage from './pages/ReportPage.jsx'
-import HistoryPage from './pages/HistoryPage.jsx'
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -22,7 +21,6 @@ function AppRoutes() {
         <Route path="/app" element={<App />} />
         <Route path="/account" element={<Account />} />
         <Route path="/report/:id" element={<ReportPage />} />
-        <Route path="/history" element={<HistoryPage />} />
         <Route path="*" element={<Landing />} />
       </Routes>
     </BrowserRouter>

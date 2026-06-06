@@ -288,11 +288,11 @@ export default function App() {
             )
           )}
           {clerkEnabled && isSignedIn && (
-            <button className="axiom-btn ax-hide-sm" onClick={() => navigate('/history')}
+            <button className="axiom-btn ax-hide-sm" onClick={() => navigate('/account')}
               style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2, background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 6, padding: '6px 14px', cursor: 'pointer', transition: 'all 0.15s' }}
               onMouseEnter={e => { e.target.style.color = T.text; e.target.style.borderColor = T.border2 }}
               onMouseLeave={e => { e.target.style.color = T.muted2; e.target.style.borderColor = T.border }}
-            >History</button>
+            >Account</button>
           )}
           {clerkEnabled && <AppUserButton />}
         </div>

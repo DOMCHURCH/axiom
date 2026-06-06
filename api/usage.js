@@ -1,7 +1,7 @@
 import { getUsage, initDb } from './db.js'
 import { verifyClerkToken } from './auth.js'
 
-const FREE_LIMIT = 5
+const FREE_LIMIT = 2 // must match api/ai.js enforcement
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -22,8 +22,9 @@ export default async function handler(req, res) {
     const isAdmin = adminIds.includes(userId)
     return res.status(200).json({
       used: usage.report_count,
-      limit: isAdmin ? Infinity : FREE_LIMIT,
-      remaining: isAdmin ? Infinity : Math.max(0, FREE_LIMIT - usage.report_count),
+      // null = unlimited (Infinity would serialize to null anyway; be explicit)
+      limit: isAdmin ? null : FREE_LIMIT,
+      remaining: isAdmin ? null : Math.max(0, FREE_LIMIT - usage.report_count),
       resetAt: usage.reset_at,
       isAdmin,
     })

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { fmt, fmtDollar, pct, pctSigned, fmtMultiple, runDCF, dcfSensitivity, monteCarloDCF } from '../lib/dcf.js'
 import { altmanZScore, piotroskiFScore, dupontROE } from '../lib/scores.js'
 import { Sparkline, FootballField, ScoreGauge, Histogram } from './charts.jsx'
@@ -142,15 +143,18 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
     shares: fin.shares,
     netDebt: fin.netDebt,
   }
-  const dcf = fcf ? runDCF(dcfIn) : null
-  const sensitivity = fcf && dcf ? dcfSensitivity(dcfIn) : null
+  // Keyed on [result, fin] — these fully determine every derived value, so the
+  // expensive math (a 2,000-trial Monte Carlo) recomputes only when a new report
+  // loads, not on cosmetic re-renders (e.g. the Share button toggling state).
+  const dcf = useMemo(() => (fcf ? runDCF(dcfIn) : null), [result, fin])
+  const sensitivity = useMemo(() => (fcf && dcf ? dcfSensitivity(dcfIn) : null), [result, fin, dcf])
 
   // ── Live price is the source of truth; AI estimate is fallback only ──
   const isLive = fin.price != null
   const currentPrice = fin.price ?? d.currentPrice ?? null
 
   // Monte Carlo DCF distribution
-  const monteCarlo = fcf && fin.shares ? monteCarloDCF(dcfIn, currentPrice) : null
+  const monteCarlo = useMemo(() => (fcf && fin.shares ? monteCarloDCF(dcfIn, currentPrice) : null), [result, fin])
 
   // Upside computed against the live price
   let upside = null
@@ -177,10 +181,10 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
     fcfYield: computedFcfYield ?? d.tradingMultiples?.fcfYield,
   }
 
-  // ── Financial-health scores ──
-  const altman = altmanZScore({ ...fin, marketCap })
-  const piotroski = piotroskiFScore(fin)
-  const dupont = dupontROE(fin)
+  // ── Financial-health scores (memoized — pure functions of fin/marketCap) ──
+  const altman = useMemo(() => altmanZScore({ ...fin, marketCap }), [fin, marketCap])
+  const piotroski = useMemo(() => piotroskiFScore(fin), [fin])
+  const dupont = useMemo(() => dupontROE(fin), [fin])
 
   // ── Normalize comps — AI sometimes returns percentages as whole numbers ──
   const normalizedComps = (d.comps || []).map(c => ({
