@@ -235,8 +235,25 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
     dot: (c) => ({ width: 5, height: 5, borderRadius: '50%', background: c, marginTop: 8, flexShrink: 0 }),
   }
 
+  const dataFields = [fin.revenue, fin.netIncome, fin.totalAssets, fin.grossMargin]
+  const missingCount = dataFields.filter(v => v == null || v === 0).length
+  const thinData = missingCount >= 3
+
   return (
     <div style={s.root}>
+
+      {/* ── THIN DATA WARNING ── */}
+      {thinData && (
+        <div style={{ background: '#f59e0b0d', border: '1px solid #f59e0b25', borderLeft: '3px solid #f59e0b', borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <span style={{ fontSize: 14, flexShrink: 0 }}>⚠</span>
+          <div>
+            <div style={{ fontFamily: C.mono, fontSize: 11, color: '#f59e0b', fontWeight: 600, marginBottom: 3 }}>Limited SEC Data</div>
+            <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.5 }}>
+              EDGAR returned sparse financial data for <strong style={{ color: '#e5e5e5' }}>{ticker.toUpperCase()}</strong>. This may affect model accuracy. Common causes: foreign filer (20-F instead of 10-K), recent IPO, or non-standard fiscal year. Cross-check key figures independently.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── HEADER ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, flexWrap: 'wrap', gap: 20 }}>
