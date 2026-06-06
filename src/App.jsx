@@ -63,7 +63,7 @@ export default function App() {
   const [currentTicker, setCurrentTicker] = useState('')
   const [history, setHistory] = useState([])
   const [usage, setUsage] = useState(null)
-  const [reportId, setReportId] = useState(null)
+  const [shareToken, setShareToken] = useState(null)
   const [copied, setCopied] = useState(false)
   const [inputFocused, setInputFocused] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
@@ -141,14 +141,14 @@ export default function App() {
         ticker: sym, financials: edgarData.financials, clerkToken,
         onProgress: msg => { setProgress(msg); setProgressPct(p => Math.min(p + 20, 92)) },
       })
-      setProgressPct(100); setReport(result); setCurrentTicker(sym); setReportId(null)
+      setProgressPct(100); setReport(result); setCurrentTicker(sym); setShareToken(null)
       saveToHistory(sym, { ...result, financials: edgarData.financials })
       setHistory(loadHistory())
       getToken().then(token => {
         const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
         // Save to cloud history and capture ID for sharing
         fetch('/api/reports', { method: 'POST', headers, body: JSON.stringify({ ticker: sym, result: { ...result, financials: edgarData.financials } }) })
-          .then(r => r.json()).then(d => { if (d.id) setReportId(d.id) }).catch(() => {})
+          .then(r => r.json()).then(d => { if (d.shareToken) setShareToken(d.shareToken) }).catch(() => {})
         // Refresh usage
         fetch('/api/usage', { headers }).then(r => r.json()).then(setUsage).catch(() => {})
       })
@@ -224,9 +224,9 @@ export default function App() {
             )}
           </div>
           <div className="ax-report-hdr-right" style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
-            {reportId && (
+            {shareToken && (
               <button className="axiom-btn ax-share-btn" onClick={() => {
-                navigator.clipboard.writeText(`${window.location.origin}/report/${reportId}`)
+                navigator.clipboard.writeText(`${window.location.origin}/report/${shareToken}`)
                 setCopied(true); setTimeout(() => setCopied(false), 2000)
               }} style={{ fontFamily: T.mono, fontSize: 11, color: copied ? T.green : T.muted2, background: copied ? T.green + '15' : 'transparent', border: `1px solid ${copied ? T.green + '44' : T.border}`, borderRadius: 7, padding: '7px 16px', cursor: 'pointer', transition: 'all 0.2s', letterSpacing: 0.3 }}
                 onMouseEnter={e => { if (!copied) { e.currentTarget.style.borderColor = T.border2; e.currentTarget.style.color = T.text } }}

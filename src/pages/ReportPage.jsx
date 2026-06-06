@@ -10,17 +10,17 @@ const T = {
 }
 
 export default function ReportPage() {
-  const { id } = useParams()
+  const { token } = useParams()
   const [report, setReport] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`/api/report?id=${id}`)
+    fetch(`/api/report?token=${encodeURIComponent(token)}`)
       .then(r => r.ok ? r.json() : r.json().then(d => Promise.reject(d.error || 'Not found')))
       .then(data => { setReport(data); setLoading(false) })
       .catch(err => { setError(typeof err === 'string' ? err : 'Failed to load report'); setLoading(false) })
-  }, [id])
+  }, [token])
 
   return (
     <div style={{ minHeight: '100vh', background: T.bg, fontFamily: T.sans }}>

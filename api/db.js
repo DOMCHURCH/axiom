@@ -1,6 +1,13 @@
 import { neon } from '@neondatabase/serverless'
+import { randomBytes } from 'node:crypto'
 
 const sql = neon(process.env.DATABASE_URL)
+
+// Unguessable share token (96 bits, URL-safe). Public reports are fetched by
+// this token instead of the sequential id, so they can't be enumerated.
+function makeShareToken() {
+  return randomBytes(12).toString('base64url')
+}
 
 // Memoize across warm invocations — the schema is idempotent, but re-running
 // 5 statements on every request adds needless round-trips and latency. Cache the
@@ -22,10 +29,16 @@ export function initDb() {
         user_id TEXT NOT NULL,
         ticker TEXT NOT NULL,
         result JSONB NOT NULL,
+        share_token TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )
     `
     await sql`CREATE INDEX IF NOT EXISTS reports_user_id_idx ON reports (user_id, created_at DESC)`
+    // Migrate existing tables: add the column, backfill tokens for old rows,
+    // enforce uniqueness. All idempotent — no-ops once applied.
+    await sql`ALTER TABLE reports ADD COLUMN IF NOT EXISTS share_token TEXT`
+    await sql`UPDATE reports SET share_token = replace(gen_random_uuid()::text, '-', '') WHERE share_token IS NULL`
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS reports_share_token_idx ON reports (share_token)`
     await sql`
       CREATE TABLE IF NOT EXISTS waitlist (
         id SERIAL PRIMARY KEY,
@@ -52,21 +65,24 @@ export async function incrementUsage(userId) {
 }
 
 export async function saveReport(userId, ticker, result) {
+  const token = makeShareToken()
   const rows = await sql`
-    INSERT INTO reports (user_id, ticker, result) VALUES (${userId}, ${ticker}, ${JSON.stringify(result)})
-    RETURNING id
+    INSERT INTO reports (user_id, ticker, result, share_token)
+    VALUES (${userId}, ${ticker}, ${JSON.stringify(result)}, ${token})
+    RETURNING id, share_token
   `
-  return rows[0].id
+  return { id: rows[0].id, shareToken: rows[0].share_token }
 }
 
-export async function getReport(id) {
-  const rows = await sql`SELECT id, ticker, result, created_at FROM reports WHERE id = ${id}`
+// Public fetch by unguessable token (not the sequential id) — prevents enumeration.
+export async function getReportByToken(token) {
+  const rows = await sql`SELECT ticker, result, created_at FROM reports WHERE share_token = ${token}`
   return rows[0] || null
 }
 
 export async function getReports(userId) {
   const rows = await sql`
-    SELECT id, ticker, result, created_at FROM reports
+    SELECT id, ticker, result, share_token, created_at FROM reports
     WHERE user_id = ${userId}
     ORDER BY created_at DESC
     LIMIT 50

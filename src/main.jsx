@@ -20,7 +20,7 @@ function AppRoutes() {
         <Route path="/" element={<Landing />} />
         <Route path="/app" element={<App />} />
         <Route path="/account" element={<Account />} />
-        <Route path="/report/:id" element={<ReportPage />} />
+        <Route path="/report/:token" element={<ReportPage />} />
         <Route path="*" element={<Landing />} />
       </Routes>
     </BrowserRouter>

@@ -203,7 +203,7 @@ export default function Account() {
                 const target = r.result?.structured?.targetPrice
                 const company = r.result?.structured?.companyDescription?.split('.')[0]
                 return (
-                  <div key={r.id} onClick={() => navigate(`/report/${r.id}`)} style={{ background: T.panel, border: `1px solid ${T.border}`, borderRadius: 10, padding: '15px 20px', display: 'flex', alignItems: 'center', gap: 18, transition: 'all 0.15s', cursor: 'pointer' }}
+                  <div key={r.id} onClick={() => r.share_token && navigate(`/report/${r.share_token}`)} style={{ background: T.panel, border: `1px solid ${T.border}`, borderRadius: 10, padding: '15px 20px', display: 'flex', alignItems: 'center', gap: 18, transition: 'all 0.15s', cursor: r.share_token ? 'pointer' : 'default' }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = T.accentBd; e.currentTarget.style.background = T.panelHov; e.currentTarget.style.boxShadow = `inset 3px 0 0 ${T.accent}` }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.background = T.panel; e.currentTarget.style.boxShadow = 'none' }}
                   >

@@ -20,8 +20,8 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const { ticker, result } = req.body || {}
     if (!ticker || !result) return res.status(400).json({ error: 'ticker and result required' })
-    const id = await saveReport(userId, ticker, result)
-    return res.status(200).json({ ok: true, id })
+    const { id, shareToken } = await saveReport(userId, ticker, result)
+    return res.status(200).json({ ok: true, id, shareToken })
   }
 
   return res.status(405).json({ error: 'Method not allowed' })
