@@ -1,10 +1,14 @@
 // Pure-SVG chart primitives — no external charting library.
+// Palette unified with the app's deep-navy institutional system.
 const C = {
   accent: '#38bdf8', positive: '#22c55e', negative: '#f87171',
-  warning: '#f59e0b', muted: '#4b5563', muted2: '#6b7280',
-  border: '#1e1e1e', bg: '#0a0a0a',
+  warning: '#f59e0b', muted: '#475569', muted2: '#64748b',
+  border: '#1a2744', bg: '#070b1a',
   mono: "'IBM Plex Mono', monospace",
 }
+
+let _gid = 0
+const uid = () => `axg${++_gid}`
 
 // ── Sparkline: inline trend line for a small series ──
 // `data` is oldest→newest. Pass reversed EDGAR history.
@@ -22,15 +26,25 @@ export function Sparkline({ data, width = 120, height = 32, color = C.accent }) 
     const y = height - pad - ((v - min) / range) * (height - pad * 2)
     return [x, y]
   })
-  const path = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ')
+  const linePath = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ')
+  const areaPath = `${linePath} L ${pts[pts.length - 1][0].toFixed(1)} ${height} L ${pts[0][0].toFixed(1)} ${height} Z`
   const rising = clean[clean.length - 1] >= clean[0]
   const lineColor = color === 'auto' ? (rising ? C.positive : C.negative) : color
   const last = pts[pts.length - 1]
+  const gid = uid()
 
   return (
-    <svg width={width} height={height} style={{ display: 'block' }}>
-      <path d={path} fill="none" stroke={lineColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={last[0]} cy={last[1]} r="2" fill={lineColor} />
+    <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={lineColor} stopOpacity="0.22" />
+          <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#${gid})`} stroke="none" />
+      <path d={linePath} fill="none" stroke={lineColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={last[0]} cy={last[1]} r="2.4" fill={lineColor} />
+      <circle cx={last[0]} cy={last[1]} r="4" fill={lineColor} opacity="0.25" />
     </svg>
   )
 }
@@ -161,35 +175,54 @@ export function Histogram({ histogram, current, median, p10, p90, height = 90 })
 
   return (
     <div style={{ width: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1.5, height, position: 'relative' }}>
-        {visible.map((b, i) => {
-          const aboveCurrent = current != null && b.x >= current
-          return (
-            <div key={i} style={{
-              flex: 1,
-              height: `${(b.count / maxCount) * 100}%`,
-              minHeight: b.count > 0 ? 2 : 0,
-              background: aboveCurrent ? C.positive : C.negative,
-              opacity: 0.6,
-              borderRadius: '1px 1px 0 0',
-            }} />
-          )
-        })}
-        {/* median marker */}
-        {median != null && (
-          <div style={{ position: 'absolute', left: `${scaleX(median)}%`, top: 0, bottom: 0,
-            width: 1.5, background: C.accent }} />
-        )}
-        {/* current price marker */}
-        {current != null && current >= displayMin && current <= displayMax && (
-          <div style={{ position: 'absolute', left: `${scaleX(current)}%`, top: 0, bottom: 0,
-            width: 1, background: '#ffffff55', borderLeft: '1px dashed #ffffff55' }} />
-        )}
+      <div style={{ position: 'relative', height, paddingBottom: 0 }}>
+        {/* Horizontal gridlines (25/50/75%) behind the bars */}
+        {[0.25, 0.5, 0.75].map(g => (
+          <div key={g} style={{ position: 'absolute', left: 0, right: 0, bottom: `${g * 100}%`,
+            height: 1, background: C.border, opacity: 0.6 }} />
+        ))}
+        {/* Baseline */}
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 1, background: C.border2 }} />
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1.5, height, position: 'relative' }}>
+          {visible.map((b, i) => {
+            const aboveCurrent = current != null && b.x >= current
+            return (
+              <div key={i} style={{
+                flex: 1,
+                height: `${(b.count / maxCount) * 100}%`,
+                minHeight: b.count > 0 ? 2 : 0,
+                background: `linear-gradient(180deg, ${aboveCurrent ? C.positive : C.negative} 0%, ${aboveCurrent ? C.positive : C.negative}88 100%)`,
+                opacity: 0.72,
+                borderRadius: '2px 2px 0 0',
+              }} />
+            )
+          })}
+          {/* median marker */}
+          {median != null && (
+            <div style={{ position: 'absolute', left: `${scaleX(median)}%`, top: -2, bottom: 0,
+              width: 1.5, background: C.accent, boxShadow: `0 0 6px ${C.accent}` }} />
+          )}
+          {/* current price marker */}
+          {current != null && current >= displayMin && current <= displayMax && (
+            <div style={{ position: 'absolute', left: `${scaleX(current)}%`, top: 0, bottom: 0,
+              width: 0, borderLeft: '1px dashed #ffffff66' }} />
+          )}
+        </div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6,
-        fontFamily: C.mono, fontSize: 10, color: C.muted }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 7,
+        fontFamily: C.mono, fontSize: 10, color: C.muted }} className="tnum">
         <span>${displayMin.toFixed(0)}</span>
+        <span style={{ color: C.muted2 }}>P10 – P90 intrinsic value / share</span>
         <span>${displayMax.toFixed(0)}</span>
+      </div>
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
+        {[['Median', C.accent], ['Above price', C.positive], ['Below price', C.negative]].map(([lab, col]) => (
+          <div key={lab} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 9, height: 9, borderRadius: 2, background: col, opacity: 0.8 }} />
+            <span style={{ fontFamily: C.mono, fontSize: 10, color: C.muted2 }}>{lab}</span>
+          </div>
+        ))}
       </div>
     </div>
   )

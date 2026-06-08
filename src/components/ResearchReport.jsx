@@ -19,21 +19,26 @@ function fixProse(text) {
   })
 }
 
+// Unified with the app shell's deep-navy institutional palette (was pure black).
 const C = {
-  bg: '#0a0a0a',
-  panel: '#111',
-  panel2: '#141414',
-  border: '#1e1e1e',
-  border2: '#252525',
+  bg: '#070b1a',      // inner / recessed surface (metric cards)
+  panel: '#0d1228',   // primary panel
+  panel2: '#101630',  // raised panel
+  border: '#1a2744',
+  border2: '#243358',
   accent: '#38bdf8',
-  accentDim: '#38bdf815',
+  accentDim: '#38bdf812',
   positive: '#22c55e',
   negative: '#f87171',
   warning: '#f59e0b',
-  muted: '#4b5563',
-  muted2: '#6b7280',
+  muted: '#475569',
+  muted2: '#64748b',
   mono: "'IBM Plex Mono', monospace",
   sans: "'Inter', sans-serif",
+  // Elevation tokens — layered, low-spread shadows (institutional, not glowy)
+  shadowSm: '0 1px 2px rgba(0,0,0,0.4)',
+  shadow: '0 4px 16px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.4)',
+  shadowLg: '0 16px 48px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.4)',
 }
 
 const REC_COLOR = { BUY: C.positive, HOLD: C.warning, SELL: C.negative }
@@ -66,7 +71,11 @@ function SectionHeader({ children }) {
 
 function Panel({ children, style }) {
   return (
-    <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, padding: '24px 28px', ...style }}>
+    <div style={{
+      background: `linear-gradient(180deg, ${C.panel2} 0%, ${C.panel} 100%)`,
+      border: `1px solid ${C.border}`, borderRadius: 12, padding: 'clamp(18px, 3vw, 26px) clamp(18px, 3.5vw, 30px)',
+      boxShadow: C.shadow, ...style,
+    }}>
       {children}
     </div>
   )
@@ -88,15 +97,15 @@ function Badge({ label, color, size = 'sm' }) {
 
 function Metric({ label, value, sub, color, large, chart }) {
   return (
-    <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, padding: '14px 18px' }}>
+    <div className="ax-metric" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '15px 18px', boxShadow: C.shadowSm, transition: 'border-color 0.2s, transform 0.2s' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Label>{label}</Label>
         {chart}
       </div>
-      <div style={{ fontFamily: C.mono, fontSize: large ? 22 : 18, fontWeight: 600, color: color || '#e5e5e5', lineHeight: 1 }}>
+      <div className="tnum" style={{ fontFamily: C.mono, fontSize: large ? 23 : 18, fontWeight: 600, color: color || '#e8eef7', lineHeight: 1, letterSpacing: '-0.01em' }}>
         {value}
       </div>
-      {sub && <div style={{ fontFamily: C.mono, fontSize: 11, color: C.muted2, marginTop: 5 }}>{sub}</div>}
+      {sub && <div className="tnum" style={{ fontFamily: C.mono, fontSize: 11, color: C.muted2, marginTop: 5 }}>{sub}</div>}
     </div>
   )
 }
@@ -230,7 +239,7 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
   const revSeries = (fin.revenueHistory || []).slice().reverse()
 
   const s = {
-    root: { maxWidth: 980, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(12px, 4vw, 24px) 80px', fontFamily: C.sans, color: '#e5e5e5' },
+    root: { maxWidth: 980, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(12px, 4vw, 24px) 80px', fontFamily: C.sans, color: '#e5e5e5', fontVariantNumeric: 'tabular-nums lining-nums' },
     grid2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 },
     grid3: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 },
     grid4: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 12 },
@@ -246,6 +255,10 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
 
   return (
     <div style={s.root}>
+      <style>{`
+        .ax-metric:hover { border-color: ${C.border2} !important; transform: translateY(-1px); }
+        @media print { .ax-metric:hover { transform: none !important; } }
+      `}</style>
 
       {/* ── THIN DATA WARNING ── */}
       {thinData && (
