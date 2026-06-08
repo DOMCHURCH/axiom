@@ -1,7 +1,6 @@
 import { verifyClerkToken } from './auth.js'
 import { getUsage, incrementUsage, initDb } from './db.js'
 
-const FREE_LIMIT = 2
 const MODEL = 'llama-3.3-70b-versatile'
 
 async function callGroq({ prompt, systemPrompt }) {
@@ -64,18 +63,8 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Could not verify usage. Please try again.' })
   }
 
-  const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').filter(Boolean)
-  const isAdmin = adminIds.includes(userId)
-
-  if (!isAdmin && usage.report_count >= FREE_LIMIT) {
-    return res.status(429).json({
-      error: `You've used your ${FREE_LIMIT} free reports this month. Pro plan coming soon — check back shortly.`,
-      limitReached: true,
-      used: usage.report_count,
-      limit: FREE_LIMIT,
-      resetAt: usage.reset_at,
-    })
-  }
+  // Reports are unlimited for all signed-in users. We still record usage below
+  // (incrementUsage) for analytics, but no longer gate on it.
 
   const { prompt, systemPrompt } = req.body || {}
   if (!prompt) return res.status(400).json({ error: 'prompt required' })

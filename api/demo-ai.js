@@ -32,7 +32,7 @@ export default async function handler(req, res) {
   const ipLast = _ipMap.get(ip)
   if (ipLast && Date.now() - ipLast < IP_WINDOW) {
     return res.status(429).json({
-      error: 'Demo limit reached — 1 free report per 24 hours. Sign up for a free account to get 2 full reports.',
+      error: 'Demo limit reached — 1 free report per 24 hours. Sign up for a free account for unlimited reports.',
       limitReached: true,
     })
   }
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
     const age = Date.now() - parseInt(demoMatch[1], 10)
     if (age < IP_WINDOW) {
       return res.status(429).json({
-        error: 'Demo limit reached — 1 free report per 24 hours. Sign up for a free account to get 2 full reports.',
+        error: 'Demo limit reached — 1 free report per 24 hours. Sign up for a free account for unlimited reports.',
         limitReached: true,
       })
     }

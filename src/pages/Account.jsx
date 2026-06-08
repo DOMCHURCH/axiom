@@ -31,7 +31,8 @@ export default function Account() {
   }, [isSignedIn, getToken])
 
   const isAdmin = usage?.isAdmin
-  const usedPct = usage && !isAdmin ? (usage.used / FREE_LIMIT) * 100 : 0
+  const unlimited = isAdmin || usage?.unlimited
+  const usedPct = usage && !unlimited ? (usage.used / FREE_LIMIT) * 100 : 0
   const resetDate = usage?.resetAt ? new Date(usage.resetAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : null
 
   if (!isSignedIn) {
@@ -115,7 +116,7 @@ export default function Account() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 18 }}>
               <div>
                 <div style={{ fontFamily: T.mono, fontSize: 36, fontWeight: 700, color: T.text, lineHeight: 1, marginBottom: 6 }}>
-                  {usage ? usage.used : '–'}<span style={{ fontSize: 18, color: T.muted2, fontWeight: 400 }}>/{isAdmin ? '∞' : FREE_LIMIT}</span>
+                  {usage ? usage.used : '–'}<span style={{ fontSize: 18, color: T.muted2, fontWeight: 400 }}>/{unlimited ? '∞' : FREE_LIMIT}</span>
                 </div>
                 <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2 }}>reports used this month</div>
               </div>
@@ -137,14 +138,9 @@ export default function Account() {
                 boxShadow: usedPct >= 100 ? `0 0 8px ${T.red}40` : `0 0 8px ${T.accent}40`,
               }} />
             </div>
-            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, marginBottom: !isAdmin && usage?.remaining === 0 ? 16 : 0 }}>
-              {isAdmin ? 'Unlimited reports' : usage ? `${usage.remaining} report${usage.remaining !== 1 ? 's' : ''} remaining` : ''}
+            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>
+              {unlimited ? 'Unlimited reports' : usage ? `${usage.remaining} report${usage.remaining !== 1 ? 's' : ''} remaining` : ''}
             </div>
-            {!isAdmin && usage?.remaining === 0 && (
-              <div style={{ padding: '14px 18px', background: T.accentLo, border: `1px solid ${T.accentBd}`, borderRadius: 8, fontFamily: T.mono, fontSize: 11, color: T.accent, lineHeight: 1.65 }}>
-                Pro plan coming soon — unlimited reports, cloud history, shareable links.
-              </div>
-            )}
           </div>
         </div>
 

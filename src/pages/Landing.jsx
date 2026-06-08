@@ -884,7 +884,7 @@ function FinalCTA({ navigate }) {
           )}
         </div>
         <div style={{ display:'flex', justifyContent:'center', gap:24, marginTop:28, flexWrap:'wrap' }}>
-          {['No credit card','2 reports/month free','Data never stored'].map(t=>(
+          {['No credit card','Unlimited free reports','Data never stored'].map(t=>(
             <span key={t} style={{ fontFamily:T.mono, fontSize:10, color:T.text3, display:'flex', alignItems:'center', gap:6 }}>
               <span style={{ color:T.green }}>✓</span> {t}
             </span>
@@ -1045,7 +1045,7 @@ export default function Landing() {
       const aiRes = await fetch('/api/demo-ai', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ ticker:sym, financials:edgarData.financials }) })
       const aiData = await aiRes.json()
       if (!aiRes.ok) {
-        if (aiData.limitReached) throw new Error('Demo limit reached (1/day). Sign up free for 2 full reports/month.')
+        if (aiData.limitReached) throw new Error('Demo limit reached (1/day). Sign up free for unlimited reports.')
         throw new Error(aiData.error || 'Analysis failed')
       }
       setProgressPct(100); setReport(aiData); setCurrentTicker(sym)

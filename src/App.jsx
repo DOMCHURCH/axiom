@@ -251,23 +251,12 @@ export default function App() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {usage && (
-            usage.isAdmin ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {usage.isAdmin && (
                 <span style={{ fontFamily: T.mono, fontSize: 9, color: T.accent, background: T.accentLo, border: `1px solid ${T.accentBd}`, borderRadius: 4, padding: '3px 8px', letterSpacing: 1 }}>ADMIN</span>
-                <span className="ax-hide-sm" style={{ fontFamily: T.mono, fontSize: 10, color: T.muted2 }}>∞ reports</span>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: usage?.remaining === 0 ? 'pointer' : 'default' }} onClick={() => { if (usage?.remaining === 0) setShowPaywall(true) }}>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {Array.from({ length: FREE_LIMIT }).map((_, i) => (
-                    <div key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: i < (FREE_LIMIT - usage.remaining) ? T.muted : T.accent, border: `1px solid ${T.border2}`, boxShadow: i >= (FREE_LIMIT - usage.remaining) ? `0 0 6px ${T.accent}60` : 'none' }} />
-                  ))}
-                </div>
-                <span className="ax-hide-sm" style={{ fontFamily: T.mono, fontSize: 10, color: usage.remaining === 0 ? T.red : T.muted2 }}>
-                  {usage.remaining}/{FREE_LIMIT}
-                </span>
-              </div>
-            )
+              )}
+              <span className="ax-hide-sm" style={{ fontFamily: T.mono, fontSize: 10, color: T.muted2 }}>∞ reports</span>
+            </div>
           )}
           {clerkEnabled && isSignedIn && (
             <button className="axiom-btn ax-hide-sm" onClick={() => navigate('/account')}
