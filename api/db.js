@@ -3,6 +3,30 @@ import { randomBytes } from 'node:crypto'
 
 const sql = neon(process.env.DATABASE_URL)
 
+// Neon free-tier compute auto-suspends after inactivity. The first query against
+// a suspended instance can fail while it wakes (~a few hundred ms). Retry a few
+// times with backoff so a cold start is transparent instead of a 503.
+const sleep = ms => new Promise(r => setTimeout(r, ms))
+async function withRetry(fn, attempts = 4) {
+  let lastErr
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastErr = err
+      // Only retry transient connection/availability errors — not SQL errors.
+      const msg = String(err?.message || err).toLowerCase()
+      const transient = msg.includes('fetch') || msg.includes('connect') ||
+        msg.includes('timeout') || msg.includes('terminat') ||
+        msg.includes('econnreset') || msg.includes('503') || msg.includes('502') ||
+        msg.includes('network') || msg.includes('unavailable')
+      if (!transient || i === attempts - 1) throw err
+      await sleep(250 * Math.pow(2, i)) // 250ms, 500ms, 1s
+    }
+  }
+  throw lastErr
+}
+
 // Unguessable share token (96 bits, URL-safe). Public reports are fetched by
 // this token instead of the sequential id, so they can't be enumerated.
 function makeShareToken() {
@@ -15,7 +39,7 @@ function makeShareToken() {
 let _initPromise = null
 export function initDb() {
   if (_initPromise) return _initPromise
-  _initPromise = (async () => {
+  _initPromise = withRetry(async () => {
     await sql`
       CREATE TABLE IF NOT EXISTS usage (
         user_id TEXT PRIMARY KEY,
@@ -46,18 +70,20 @@ export function initDb() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )
     `
-  })().catch(err => { _initPromise = null; throw err }) // reset so a failed init can retry
+  }).catch(err => { _initPromise = null; throw err }) // reset so a failed init can retry
   return _initPromise
 }
 
 export async function getUsage(userId) {
-  await sql`INSERT INTO usage (user_id) VALUES (${userId}) ON CONFLICT (user_id) DO NOTHING`
-  await sql`
-    UPDATE usage SET report_count = 0, reset_at = date_trunc('month', now()) + interval '1 month'
-    WHERE user_id = ${userId} AND reset_at < now()
-  `
-  const rows = await sql`SELECT report_count, reset_at FROM usage WHERE user_id = ${userId}`
-  return rows[0]
+  return withRetry(async () => {
+    await sql`INSERT INTO usage (user_id) VALUES (${userId}) ON CONFLICT (user_id) DO NOTHING`
+    await sql`
+      UPDATE usage SET report_count = 0, reset_at = date_trunc('month', now()) + interval '1 month'
+      WHERE user_id = ${userId} AND reset_at < now()
+    `
+    const rows = await sql`SELECT report_count, reset_at FROM usage WHERE user_id = ${userId}`
+    return rows[0]
+  })
 }
 
 export async function incrementUsage(userId) {
