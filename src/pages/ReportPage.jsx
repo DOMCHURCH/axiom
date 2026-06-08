@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import ResearchReport from '../components/ResearchReport.jsx'
 import { exportReportPDF } from '../lib/exportPDF.js'
+import { palette, report } from '../lib/tokens.js'
 
 const T = {
-  bg: '#0a0a0a', panel: '#111', border: '#1e1e1e',
-  accent: '#38bdf8', muted: '#6b7280', red: '#f87171',
-  mono: "'IBM Plex Mono', monospace", sans: "'Inter', sans-serif",
+  bg: palette.bg, panel: palette.panel, border: palette.border,
+  accent: report.accent, muted: palette.muted2, red: report.negative,
+  mono: report.mono, sans: report.sans,
 }
 
 export default function ReportPage() {

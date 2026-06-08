@@ -1,10 +1,24 @@
 // Pure-SVG chart primitives — no external charting library.
-// Palette unified with the app's deep-navy institutional system.
-const C = {
-  accent: '#38bdf8', positive: '#22c55e', negative: '#f87171',
-  warning: '#f59e0b', muted: '#475569', muted2: '#64748b',
-  border: '#1a2744', bg: '#070b1a',
-  mono: "'IBM Plex Mono', monospace",
+// Palette unified via the shared report tokens (deep-navy institutional system).
+import { useState } from 'react'
+import { report as C } from '../lib/tokens.js'
+
+// Shared tooltip — absolutely positioned, GPU-composited, print-safe
+// (only mounts on hover, which never fires during print).
+function ChartTooltip({ x, children }) {
+  return (
+    <div className="no-print" style={{
+      position: 'absolute', left: `${x}%`, bottom: '100%', transform: 'translate(-50%, -8px)',
+      background: 'rgba(7,11,26,0.97)', border: `1px solid ${C.border2}`, borderRadius: 8,
+      padding: '8px 11px', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 20,
+      boxShadow: C.shadowLg, backdropFilter: 'blur(4px)',
+    }}>
+      {children}
+      <span style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+        width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent',
+        borderTop: `5px solid ${C.border2}` }} />
+    </div>
+  )
 }
 
 let _gid = 0
@@ -52,6 +66,7 @@ export function Sparkline({ data, width = 120, height = 32, color = C.accent }) 
 // ── Football Field: horizontal valuation-range bars ──
 // `methods` = [{ label, low, high, mid }], `current` = current price
 export function FootballField({ methods, current, target }) {
+  const [hover, setHover] = useState(null)
   const valid = (methods || []).filter(m => m.low != null && m.high != null && isFinite(m.low) && isFinite(m.high))
   if (valid.length === 0) return null
 
@@ -85,14 +100,15 @@ export function FootballField({ methods, current, target }) {
         {valid.map((m, i) => {
           const y = i * rowH + rowH / 2
           const x1 = scale(m.low), x2 = scale(m.high)
+          const active = hover === i
           return (
             <g key={i}>
               <rect x={x1} y={y - 7} width={Math.max(x2 - x1, 0.5)} height="14" rx="1.5"
-                fill={m.color || C.accent} opacity="0.28" />
+                fill={m.color || C.accent} opacity={active ? 0.45 : 0.28} style={{ transition: 'opacity 0.12s' }} />
               <rect x={x1} y={y - 7} width="0.4" height="14" fill={m.color || C.accent} vectorEffect="non-scaling-stroke" />
               <rect x={x2} y={y - 7} width="0.4" height="14" fill={m.color || C.accent} vectorEffect="non-scaling-stroke" />
               {m.mid != null && (
-                <circle cx={scale(m.mid)} cy={y} r="1" fill={m.color || C.accent} vectorEffect="non-scaling-stroke" />
+                <circle cx={scale(m.mid)} cy={y} r={active ? 1.6 : 1} fill={m.color || C.accent} vectorEffect="non-scaling-stroke" />
               )}
             </g>
           )
@@ -106,13 +122,31 @@ export function FootballField({ methods, current, target }) {
           return (
             <div key={i}>
               <div style={{ position: 'absolute', left: 0, top: y - 16, width: labelW,
-                fontFamily: C.mono, fontSize: 11, color: '#9ca3af' }}>
+                fontFamily: C.mono, fontSize: 11, color: hover === i ? '#e8eef7' : '#9ca3af', transition: 'color 0.12s' }}>
                 {m.label}
               </div>
-              <div style={{ position: 'absolute', left: 0, top: y + 1, width: labelW,
+              <div className="tnum" style={{ position: 'absolute', left: 0, top: y + 1, width: labelW,
                 fontFamily: C.mono, fontSize: 10, color: C.muted }}>
                 ${m.low.toFixed(0)} – ${m.high.toFixed(0)}
               </div>
+            </div>
+          )
+        })}
+        {/* Per-row hover hitboxes + midpoint tooltip */}
+        {valid.map((m, i) => {
+          const top = i * rowH
+          return (
+            <div key={`hz${i}`}
+              onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}
+              style={{ position: 'absolute', left: 0, right: 0, top, height: rowH, pointerEvents: 'auto', cursor: 'default' }}>
+              {hover === i && m.mid != null && (
+                <ChartTooltip x={Math.max(8, Math.min(92, scale(m.mid)))}>
+                  <div style={{ fontFamily: C.mono, fontSize: 11, color: m.color || C.accent, fontWeight: 600 }}>{m.label}</div>
+                  <div className="tnum" style={{ fontFamily: C.mono, fontSize: 11, color: '#e8eef7', marginTop: 3 }}>
+                    Mid ${m.mid.toFixed(0)} <span style={{ color: C.muted2 }}>· ${m.low.toFixed(0)}–${m.high.toFixed(0)}</span>
+                  </div>
+                </ChartTooltip>
+              )}
             </div>
           )
         })}
@@ -161,8 +195,11 @@ export function ScoreGauge({ value, max, color, label, sublabel }) {
 
 // ── Histogram: Monte Carlo distribution ──
 export function Histogram({ histogram, current, median, p10, p90, height = 90 }) {
+  const [hover, setHover] = useState(null)
   if (!histogram || histogram.length === 0) return null
   const maxCount = Math.max(...histogram.map(b => b.count)) || 1
+  const totalCount = histogram.reduce((s, b) => s + b.count, 0) || 1
+  const binW = (histogram[1]?.x - histogram[0]?.x) || 0
 
   // Use P10/P90 as display range to hide extreme tails; fall back to full range
   const displayMin = p10 ?? histogram[0].x
@@ -183,20 +220,38 @@ export function Histogram({ histogram, current, median, p10, p90, height = 90 })
         ))}
         {/* Baseline */}
         <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 1, background: C.border2 }} />
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1.5, height, position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1.5, height, position: 'relative' }}
+          onMouseLeave={() => setHover(null)}>
           {visible.map((b, i) => {
             const aboveCurrent = current != null && b.x >= current
+            const col = aboveCurrent ? C.positive : C.negative
+            const active = hover === i
             return (
-              <div key={i} style={{
-                flex: 1,
-                height: `${(b.count / maxCount) * 100}%`,
-                minHeight: b.count > 0 ? 2 : 0,
-                background: `linear-gradient(180deg, ${aboveCurrent ? C.positive : C.negative} 0%, ${aboveCurrent ? C.positive : C.negative}88 100%)`,
-                opacity: 0.72,
-                borderRadius: '2px 2px 0 0',
-              }} />
+              <div key={i}
+                onMouseEnter={() => setHover(i)}
+                style={{
+                  flex: 1,
+                  height: `${(b.count / maxCount) * 100}%`,
+                  minHeight: b.count > 0 ? 2 : 0,
+                  background: `linear-gradient(180deg, ${col} 0%, ${col}88 100%)`,
+                  opacity: active ? 1 : 0.72,
+                  borderRadius: '2px 2px 0 0',
+                  transition: 'opacity 0.12s',
+                  cursor: 'default',
+                }} />
             )
           })}
+          {/* Premium tooltip */}
+          {hover != null && visible[hover] && (
+            <ChartTooltip x={((hover + 0.5) / visible.length) * 100}>
+              <div className="tnum" style={{ fontFamily: C.mono, fontSize: 12, color: '#e8eef7', fontWeight: 600 }}>
+                ${visible[hover].x.toFixed(0)} – ${(visible[hover].x + binW).toFixed(0)}
+              </div>
+              <div className="tnum" style={{ fontFamily: C.mono, fontSize: 10, color: C.muted2, marginTop: 2 }}>
+                {visible[hover].count.toLocaleString()} trials · {((visible[hover].count / totalCount) * 100).toFixed(1)}%
+              </div>
+            </ChartTooltip>
+          )}
           {/* median marker */}
           {median != null && (
             <div style={{ position: 'absolute', left: `${scaleX(median)}%`, top: -2, bottom: 0,

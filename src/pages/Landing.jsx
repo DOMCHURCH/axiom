@@ -2,29 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ResearchReport from '../components/ResearchReport.jsx'
 import { SignInButton, SignUpButton, UserButton, useUser } from '@clerk/clerk-react'
-
-// ─── Design Tokens ───────────────────────────────────────────────────────────
-const T = {
-  bg:      '#04040a',
-  bg2:     '#07071200',
-  panel:   'rgba(255,255,255,0.03)',
-  panelSolid: '#0c0c1a',
-  border:  'rgba(255,255,255,0.07)',
-  border2: 'rgba(255,255,255,0.12)',
-  violet:  '#7c3aed',
-  blue:    '#2563eb',
-  cyan:    '#06b6d4',
-  green:   '#10b981',
-  red:     '#ef4444',
-  gold:    '#f59e0b',
-  text:    '#ffffff',
-  text2:   '#94a3b8',
-  text3:   '#475569',
-  mono:    "'IBM Plex Mono', monospace",
-  sans:    "'Inter', system-ui, sans-serif",
-  grad:    'linear-gradient(135deg, #7c3aed, #2563eb, #06b6d4)',
-  gradHover: 'linear-gradient(135deg, #6d28d9, #1d4ed8, #0891b2)',
-}
+import { brand as T, ease as EASE } from '../lib/tokens.js'
 
 const clerkEnabled = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -67,8 +45,6 @@ function useScrollProgress() {
   }, [])
   return [ref, p]
 }
-
-const EASE = 'cubic-bezier(0.16,1,0.3,1)'
 
 function Reveal({ children, delay = 0, y = 32, blur = true, scale = false, style, ...props }) {
   const [ref, inView] = useInView(0.12)
@@ -997,6 +973,10 @@ export default function Landing() {
       @keyframes fadeUp { from { opacity: 0; transform: translateY(28px) } to { opacity: 1; transform: translateY(0) } }
       @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
       @keyframes orbFloat { 0%,100% { transform: translate(0,0) } 33% { transform: translate(30px,-20px) } 66% { transform: translate(-20px,15px) } }
+      /* Fixed nav is 60px — offset anchor jumps so section headers aren't hidden */
+      #features, #pricing, #faq { scroll-margin-top: 76px; }
+      /* Tabular, lining figures for all marketing numerics (prices, stats, mockup) */
+      section, footer, nav { font-variant-numeric: tabular-nums lining-nums; }
       .lift-card:hover { border-color: rgba(124,58,237,0.4) !important; transform: translateY(-6px); box-shadow: 0 24px 60px rgba(0,0,0,0.4), 0 0 40px rgba(124,58,237,0.1); }
       .lift-card:hover .lift-img { transform: scale(1.08); }
       .feat-card { transition: all 0.4s cubic-bezier(0.16,1,0.3,1); }

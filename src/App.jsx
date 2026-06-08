@@ -5,31 +5,7 @@ import ResearchReport from './components/ResearchReport.jsx'
 import { saveToHistory, loadHistory } from './lib/storage.js'
 import { generateResearch } from './lib/ai.js'
 import { exportReportPDF } from './lib/exportPDF.js'
-
-const T = {
-  bg:       '#050810',
-  bg2:      '#07091a',
-  bg3:      '#0a0d24',
-  panel:    '#0d1228',
-  panelHov: '#101530',
-  border:   '#1a2744',
-  border2:  '#243358',
-  accent:   '#0ea5e9',
-  accentLo: '#0ea5e910',
-  accentBd: '#0ea5e935',
-  accentMid:'#0ea5e960',
-  green:    '#10b981',
-  greenLo:  '#10b98115',
-  red:      '#ef4444',
-  gold:     '#f59e0b',
-  text:     '#f0f6ff',
-  text2:    '#94a3b8',
-  text3:    '#64748b',
-  muted:    '#3d5470',
-  muted2:   '#6b849e',
-  mono:     "'IBM Plex Mono', 'Courier New', monospace",
-  sans:     "'Inter', system-ui, sans-serif",
-}
+import { palette as T } from './lib/tokens.js'
 
 const REC_COLOR = { BUY: '#10b981', HOLD: '#f59e0b', SELL: '#ef4444' }
 const FREE_LIMIT = 2

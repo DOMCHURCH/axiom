@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { fmt, fmtDollar, pct, pctSigned, fmtMultiple, runDCF, dcfSensitivity, monteCarloDCF } from '../lib/dcf.js'
 import { altmanZScore, piotroskiFScore, dupontROE } from '../lib/scores.js'
 import { Sparkline, FootballField, ScoreGauge, Histogram } from './charts.jsx'
+import { report as C } from '../lib/tokens.js'
 
 // Convert bare decimals in AI prose to formatted percentages.
 // Only matches 0.01–0.99 NOT already followed by a % sign.
@@ -17,28 +18,6 @@ function fixProse(text) {
     }
     return match
   })
-}
-
-// Unified with the app shell's deep-navy institutional palette (was pure black).
-const C = {
-  bg: '#070b1a',      // inner / recessed surface (metric cards)
-  panel: '#0d1228',   // primary panel
-  panel2: '#101630',  // raised panel
-  border: '#1a2744',
-  border2: '#243358',
-  accent: '#38bdf8',
-  accentDim: '#38bdf812',
-  positive: '#22c55e',
-  negative: '#f87171',
-  warning: '#f59e0b',
-  muted: '#475569',
-  muted2: '#64748b',
-  mono: "'IBM Plex Mono', monospace",
-  sans: "'Inter', sans-serif",
-  // Elevation tokens — layered, low-spread shadows (institutional, not glowy)
-  shadowSm: '0 1px 2px rgba(0,0,0,0.4)',
-  shadow: '0 4px 16px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.4)',
-  shadowLg: '0 16px 48px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.4)',
 }
 
 const REC_COLOR = { BUY: C.positive, HOLD: C.warning, SELL: C.negative }
