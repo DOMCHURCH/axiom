@@ -126,8 +126,8 @@ export default function Account() {
                 {user?.primaryEmailAddress?.emailAddress}
               </div>
             </div>
-            <div style={{ fontFamily: T.mono, fontSize: 9, color: T.muted, background: T.bg3, border: `1px solid ${T.border}`, borderRadius: 5, padding: '5px 12px', letterSpacing: 1.2, textTransform: 'uppercase', flexShrink: 0 }}>
-              Free Plan
+            <div style={{ fontFamily: T.mono, fontSize: 9, color: isAdmin ? T.accent : T.muted, background: isAdmin ? T.accentLo : T.bg3, border: `1px solid ${isAdmin ? T.accentBd : T.border}`, borderRadius: 5, padding: '5px 12px', letterSpacing: 1.2, textTransform: 'uppercase', flexShrink: 0 }}>
+              {isAdmin ? 'Admin' : 'Free Plan'}
             </div>
           </div>
         </div>

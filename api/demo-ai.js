@@ -1,4 +1,9 @@
-const SYSTEM = `You are a managing director of equity research at a bulge-bracket investment bank with 20 years of experience covering public equities. You write for sophisticated institutional investors — pension funds, hedge funds, and family offices. Your analysis is precise, data-driven, and takes clear stances. You never hedge with "it depends" without explaining which way you lean.`
+const SYSTEM = `You are a managing director of equity research at a bulge-bracket investment bank with 20 years of experience covering public equities. You write for sophisticated institutional investors — pension funds, hedge funds, and family offices. Your analysis is precise, data-driven, and takes clear stances. You never hedge with "it depends" without explaining which way you lean. When data is limited, you make explicit assumptions and say so.`
+
+// In-memory IP rate limit — persists across warm invocations, resets on cold starts.
+// Supplements the cookie layer: harder to bypass because it's server-side.
+const _ipMap = new Map() // ip → timestamp of last demo
+const IP_WINDOW = 24 * 60 * 60 * 1000
 
 function dollar(n) {
   if (n == null) return 'N/A'
@@ -22,14 +27,24 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  // Cookie-based rate limit: 1 demo per 24 hours
+  // Server-side IP rate limit (harder to bypass than cookies)
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown'
+  const ipLast = _ipMap.get(ip)
+  if (ipLast && Date.now() - ipLast < IP_WINDOW) {
+    return res.status(429).json({
+      error: 'Demo limit reached — 1 free report per 24 hours. Sign up for a free account to get 2 full reports.',
+      limitReached: true,
+    })
+  }
+
+  // Cookie-based rate limit (secondary layer)
   const cookies = req.headers.cookie || ''
   const demoMatch = cookies.match(/axiom_demo=(\d+)/)
   if (demoMatch) {
     const age = Date.now() - parseInt(demoMatch[1], 10)
-    if (age < 24 * 60 * 60 * 1000) {
+    if (age < IP_WINDOW) {
       return res.status(429).json({
-        error: 'Demo limit reached — 1 free report per 24 hours. Use your own API key in the full app for unlimited access.',
+        error: 'Demo limit reached — 1 free report per 24 hours. Sign up for a free account to get 2 full reports.',
         limitReached: true,
       })
     }
@@ -65,28 +80,46 @@ DATA:
 ${dataBlock}
 
 CRITICAL FORMATTING RULES:
-- All rates/margins/growth/yields MUST be decimals: 0.15 = 15%, 0.08 = 8%. NEVER use whole-number percentages.
+- JSON NUMERIC FIELDS (dcfAssumptions, comps revenueGrowth/grossMargin, tradingMultiples fcfYield, upside): use decimals. 0.15 = 15%, 0.08 = 8%. NEVER whole-number percentages in these fields.
+- PROSE TEXT FIELDS (executiveSummary, investmentThesis, bullCase, bearCase, analystNote, financialHighlights, companyDescription, catalysts, risks description): ALWAYS write percentages as formatted strings like "15.9%", "17% upside", "8.5% WACC". NEVER use bare decimals like 0.159 or 0.17 in prose text.
 - Multiples (EV/EBITDA, P/E) are plain numbers: 24.5 means 24.5x. Realistic ranges: EV/EBITDA 5-50x, P/E 10-100x.
-- upside is a decimal: 0.15 = 15% upside.
+- upside field is a decimal: 0.15 = 15% upside. targetPrice is a dollar amount anchored to the live market price above.
+- DCF assumptions must be realistic for the sector. For high-multiple tech stocks, use nearTermGrowth 0.10-0.20, longTermGrowth 0.06-0.10, terminalGrowthRate 0.025-0.03, wacc 0.08-0.10.
+
+NARRATIVE ACCURACY RULES (prevent self-contradiction):
+- In PROSE, do NOT state specific valuation multiples (e.g. "EV/EBITDA of 24.5"). Speak qualitatively: "trades at a premium multiple".
+- Only cite hard numbers you were actually GIVEN in the DATA block. Never invent multiples or DCF values in prose.
+- Be precise about net debt direction: positive net debt = more debt than cash.
 
 {"recommendation":"BUY"|"HOLD"|"SELL","targetPrice":number|null,"currentPrice":number|null,"upside":number|null,"companyDescription":"one sentence","executiveSummary":"3-4 sentences covering growth, margins, valuation stance","moatRating":"WIDE"|"NARROW"|"NONE","investmentThesis":"2-3 sentences — specific, data-driven, take a clear stance","bullCase":["point with specific number","point with specific number","point with specific number"],"bearCase":["point with specific number","point with specific number","point with specific number"],"catalysts":["specific near-term catalyst","specific near-term catalyst"],"dcfAssumptions":{"nearTermGrowth":0.12,"longTermGrowth":0.07,"terminalGrowthRate":0.025,"wacc":0.09,"ebitdaMargin":0.28,"fcfConversionRate":0.85},"comps":[{"ticker":"string","name":"string","evEbitda":24.5,"peRatio":32.1,"revenueGrowth":0.12,"grossMargin":0.68},{"ticker":"string","name":"string","evEbitda":18.2,"peRatio":28.4,"revenueGrowth":0.09,"grossMargin":0.72},{"ticker":"string","name":"string","evEbitda":21.0,"peRatio":30.5,"revenueGrowth":0.15,"grossMargin":0.61}],"risks":[{"title":"string","description":"string","severity":"HIGH"|"MEDIUM"|"LOW","category":"FINANCIAL"|"OPERATIONAL"|"REGULATORY"|"COMPETITIVE"|"MACRO"},{"title":"string","description":"string","severity":"HIGH"|"MEDIUM"|"LOW","category":"FINANCIAL"|"OPERATIONAL"|"REGULATORY"|"COMPETITIVE"|"MACRO"},{"title":"string","description":"string","severity":"HIGH"|"MEDIUM"|"LOW","category":"FINANCIAL"|"OPERATIONAL"|"REGULATORY"|"COMPETITIVE"|"MACRO"},{"title":"string","description":"string","severity":"HIGH"|"MEDIUM"|"LOW","category":"FINANCIAL"|"OPERATIONAL"|"REGULATORY"|"COMPETITIVE"|"MACRO"}],"tradingMultiples":{"evRevenue":number|null,"evEbitda":number|null,"peRatio":number|null,"fcfYield":number|null},"financialHighlights":{"revenueGrowthComment":"string","marginComment":"string","balanceSheetComment":"string","fcfComment":"string"},"analystNote":"2-3 sentences — definitive stance, cite specific numbers, no boilerplate"}`
 
   try {
-    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: SYSTEM },
-          { role: 'user', content: prompt },
-        ],
-        max_tokens: 4096,
-      }),
-    })
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 45_000)
+    let r
+    try {
+      r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: SYSTEM },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: 4096,
+        }),
+      })
+    } catch (fetchErr) {
+      clearTimeout(timeout)
+      if (fetchErr.name === 'AbortError') return res.status(504).json({ error: 'Request timed out — try again.' })
+      throw fetchErr
+    }
+    clearTimeout(timeout)
 
     const data = await r.json()
     if (!r.ok) {
@@ -109,7 +142,8 @@ CRITICAL FORMATTING RULES:
       return res.status(502).json({ error: 'JSON parse failed. Try again.' })
     }
 
-    // Set demo cookie — expires in 24h
+    // Record IP and set cookie — both used as rate limit layers
+    _ipMap.set(ip, Date.now())
     res.setHeader('Set-Cookie', `axiom_demo=${Date.now()}; Max-Age=86400; Path=/; HttpOnly; SameSite=Strict`)
     return res.status(200).json({ structured, reasoning: null })
   } catch (err) {

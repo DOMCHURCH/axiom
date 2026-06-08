@@ -9,14 +9,26 @@ async function callGroq({ prompt, systemPrompt }) {
   if (systemPrompt) messages.push({ role: 'system', content: systemPrompt })
   messages.push({ role: 'user', content: prompt })
 
-  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-    },
-    body: JSON.stringify({ model: MODEL, messages, max_tokens: 8096 }),
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 45_000)
+
+  let r
+  try {
+    r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({ model: MODEL, messages, max_tokens: 8096 }),
+    })
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error('AI request timed out — try again.')
+    throw err
+  } finally {
+    clearTimeout(timeout)
+  }
   const data = await r.json()
   if (!r.ok) throw new Error(data.error?.message || `Groq error ${r.status}`)
   return data.choices[0].message.content

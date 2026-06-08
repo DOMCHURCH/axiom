@@ -7,7 +7,8 @@ import { Sparkline, FootballField, ScoreGauge, Histogram } from './charts.jsx'
 // Only matches 0.01–0.99 NOT already followed by a % sign.
 function fixProse(text) {
   if (!text || typeof text !== 'string') return text
-  return text.replace(/\b(0\.\d{1,4})\b(?!%)/g, (match, num) => {
+  // Skip numbers already preceded by $ (price/dollar amounts) or followed by %
+  return text.replace(/(?<!\$)\b(0\.\d{1,4})\b(?!%)/g, (match, num) => {
     const val = parseFloat(num)
     if (val >= 0.01 && val <= 0.99) {
       const pctVal = val * 100
@@ -230,7 +231,7 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
 
   const s = {
     root: { maxWidth: 980, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(12px, 4vw, 24px) 80px', fontFamily: C.sans, color: '#e5e5e5' },
-    grid2: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 },
+    grid2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 },
     grid3: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 },
     grid4: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 12 },
     body: { fontSize: 14, lineHeight: 1.75, color: '#9ca3af' },

@@ -71,13 +71,19 @@ export default function App() {
   const [waitlistSent, setWaitlistSent] = useState(false)
   const [waitlistLoading, setWaitlistLoading] = useState(false)
   const inputRef = useRef(null)
+  const paywallShownRef = useRef(false)
   const { isSignedIn } = useUser()
   const { getToken } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
   useEffect(() => { setHistory(loadHistory()) }, [])
-  useEffect(() => { if (usage?.remaining === 0) setShowPaywall(true) }, [usage?.remaining])
+  useEffect(() => {
+    if (usage?.remaining === 0 && !paywallShownRef.current) {
+      paywallShownRef.current = true
+      setShowPaywall(true)
+    }
+  }, [usage?.remaining])
 
   // Auto-run if ?q= param is present (e.g. redirected from landing page)
   useEffect(() => {
