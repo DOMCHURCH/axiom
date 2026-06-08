@@ -307,7 +307,13 @@ function Nav({ navigate }) {
             </SignUpButton>
           </>
         )}
-        {clerkEnabled && isSignedIn && <UserButton afterSignOutUrl="/" />}
+        {clerkEnabled && isSignedIn && (
+          <>
+            <button onClick={()=>navigate('/account')} className="nav-links" style={{ fontFamily:T.sans, fontSize:13, color:T.text2, background:'transparent', border:'none', cursor:'pointer', padding:'6px 12px' }} onMouseEnter={e=>e.target.style.color='#fff'} onMouseLeave={e=>e.target.style.color=T.text2}>Account</button>
+            <button onClick={()=>navigate('/app')} style={{ fontFamily:T.sans, fontSize:13, fontWeight:600, color:'#fff', background:T.grad, border:'none', borderRadius:8, padding:'8px 20px', cursor:'pointer', boxShadow:'0 4px 20px rgba(124,58,237,0.4)', transition:'all 0.2s' }} onMouseEnter={e=>{e.target.style.boxShadow='0 6px 28px rgba(124,58,237,0.6)';e.target.style.transform='translateY(-1px)'}} onMouseLeave={e=>{e.target.style.boxShadow='0 4px 20px rgba(124,58,237,0.4)';e.target.style.transform='none'}}>Open AXIOM →</button>
+            <UserButton afterSignOutUrl="/" />
+          </>
+        )}
       </div>
     </nav>
   )
