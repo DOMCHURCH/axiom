@@ -144,60 +144,94 @@ export default async function handler(req, res) {
       return [vals[0] ?? null, vals[1] ?? null]
     }
 
+    // ── 10-Q fallback for recent IPOs / companies with no 10-K yet ──
+    // Only kicks in when there is no annual data at all. Balance-sheet items
+    // (instant facts, no start date) take the latest 10-Q value; flow items
+    // are annualized from up to the last 4 distinct quarters.
+    const REV_CONCEPTS = ['Revenues', 'RevenueFromContractWithCustomerExcludingAssessedTax', 'SalesRevenueNet', 'RevenueFromContractWithCustomerIncludingAssessedTax']
+    const useQuarterly = latest(REV_CONCEPTS) == null && latest(['Assets']) == null
+    let quartersUsed = 0
+    function qLatest(concepts, unit = 'USD') {
+      const a = latest(concepts, unit)
+      if (a != null || !useQuarterly) return a
+      for (const concept of [].concat(concepts)) {
+        const data = gaap[concept]?.units?.[unit]
+        if (!data) continue
+        const isQ = d => d.val != null && d.end && /^10-[QK]/.test(d.form || '')
+        const byRecency = (x, y) => y.end.localeCompare(x.end) || (y.filed || '').localeCompare(x.filed || '')
+        // Instant (balance-sheet) facts: latest point-in-time value
+        const inst = data.filter(d => isQ(d) && !d.start).sort(byRecency)
+        if (inst.length) return inst[0].val
+        // Flow facts: sum distinct single quarters, annualize
+        const qs = data.filter(d => {
+          if (!isQ(d) || !d.start) return false
+          const days = (new Date(d.end) - new Date(d.start)) / 86400000
+          return days >= 75 && days <= 105
+        }).sort(byRecency)
+        const seen = new Set()
+        const deduped = qs.filter(d => (seen.has(d.end) ? false : (seen.add(d.end), true))).slice(0, 4)
+        if (deduped.length) {
+          quartersUsed = Math.max(quartersUsed, deduped.length)
+          return deduped.reduce((s, d) => s + d.val, 0) * (4 / deduped.length)
+        }
+      }
+      return null
+    }
+
     // Income statement
-    const revenues = latestN(['Revenues', 'RevenueFromContractWithCustomerExcludingAssessedTax', 'SalesRevenueNet', 'RevenueFromContractWithCustomerIncludingAssessedTax'], 'USD', 4)
-    const revenue = revenues[0] ?? null
+    const revenues = latestN(REV_CONCEPTS, 'USD', 4)
+    const revenue = revenues[0] ?? qLatest(REV_CONCEPTS)
     const prevRevenue = revenues[1] ?? null
     const revenue2yAgo = revenues[2] ?? null
 
-    const costOfRevenue = latest(['CostOfRevenue', 'CostOfGoodsAndServicesSold', 'CostOfGoodsSold'])
-    const grossProfitDirect = latest(['GrossProfit'])
+    const costOfRevenue = qLatest(['CostOfRevenue', 'CostOfGoodsAndServicesSold', 'CostOfGoodsSold'])
+    const grossProfitDirect = qLatest(['GrossProfit'])
     const grossProfit = grossProfitDirect ?? (revenue != null && costOfRevenue != null ? revenue - costOfRevenue : null)
-    const operatingIncome = latest(['OperatingIncomeLoss'])
-    const netIncome = latest(['NetIncomeLoss'])
+    const operatingIncome = qLatest(['OperatingIncomeLoss'])
+    const netIncome = qLatest(['NetIncomeLoss'])
     const ebit = operatingIncome
-    const da = latest(['DepreciationDepletionAndAmortization', 'DepreciationAndAmortization'])
+    const da = qLatest(['DepreciationDepletionAndAmortization', 'DepreciationAndAmortization'])
     const ebitda = (ebit != null && da != null) ? ebit + da : (ebit ?? null)
     // Diluted first — the conservative, valuation-standard figure (basic only as fallback)
-    const eps = latest(['EarningsPerShareDiluted', 'EarningsPerShareBasic'], 'USD/shares')
-    const interestExpense = latest(['InterestExpense', 'InterestAndDebtExpense'])
+    const eps = qLatest(['EarningsPerShareDiluted', 'EarningsPerShareBasic'], 'USD/shares')
+    const interestExpense = qLatest(['InterestExpense', 'InterestAndDebtExpense'])
 
     // Balance sheet
-    const cash = latest(['CashAndCashEquivalentsAtCarryingValue', 'CashCashEquivalentsAndShortTermInvestments'])
-    const totalAssets = latest(['Assets'])
-    const totalLiabilities = latest(['Liabilities'])
-    const totalEquity = latest(['StockholdersEquity', 'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest'])
-    const longTermDebt = latest(['LongTermDebt', 'LongTermDebtNoncurrent'])
-    const shortTermDebt = latest(['ShortTermBorrowings', 'DebtCurrent', 'LongTermDebtCurrent'])
+    const cash = qLatest(['CashAndCashEquivalentsAtCarryingValue', 'CashCashEquivalentsAndShortTermInvestments'])
+    const totalAssets = qLatest(['Assets'])
+    const totalLiabilities = qLatest(['Liabilities'])
+    const totalEquity = qLatest(['StockholdersEquity', 'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest'])
+    const longTermDebt = qLatest(['LongTermDebt', 'LongTermDebtNoncurrent'])
+    const shortTermDebt = qLatest(['ShortTermBorrowings', 'DebtCurrent', 'LongTermDebtCurrent'])
     const totalDebt = (longTermDebt ?? 0) + (shortTermDebt ?? 0) || longTermDebt
-    const goodwill = latest(['Goodwill'])
-    const inventory = latest(['InventoryNet'])
-    const currentAssets = latest(['AssetsCurrent'])
-    const currentLiabilities = latest(['LiabilitiesCurrent'])
-    const retainedEarnings = latest(['RetainedEarningsAccumulatedDeficit'])
+    const goodwill = qLatest(['Goodwill'])
+    const inventory = qLatest(['InventoryNet'])
+    const currentAssets = qLatest(['AssetsCurrent'])
+    const currentLiabilities = qLatest(['LiabilitiesCurrent'])
+    const retainedEarnings = qLatest(['RetainedEarningsAccumulatedDeficit'])
     const workingCapital = currentAssets != null && currentLiabilities != null ? currentAssets - currentLiabilities : null
 
     // Cash flow
-    const operatingCF = latest(['NetCashProvidedByUsedInOperatingActivities'])
-    const capex = latest(['PaymentsToAcquirePropertyPlantAndEquipment'])
+    const operatingCF = qLatest(['NetCashProvidedByUsedInOperatingActivities'])
+    const capex = qLatest(['PaymentsToAcquirePropertyPlantAndEquipment'])
     const fcf = operatingCF != null && capex != null ? operatingCF - capex : null
-    const dividendsPaid = latest(['PaymentsOfDividends', 'PaymentsOfDividendsCommonStock'])
-    const shareRepurchases = latest(['PaymentsForRepurchaseOfCommonStock'])
+    const dividendsPaid = qLatest(['PaymentsOfDividends', 'PaymentsOfDividendsCommonStock'])
+    const shareRepurchases = qLatest(['PaymentsForRepurchaseOfCommonStock'])
 
     // Shares
-    const sharesDiluted = latest(['CommonStockSharesOutstanding', 'WeightedAverageNumberOfDilutedSharesOutstanding'], 'shares')
-    const sharesBasic = latest(['WeightedAverageNumberOfSharesOutstandingBasic'], 'shares')
+    const sharesDiluted = qLatest(['CommonStockSharesOutstanding', 'WeightedAverageNumberOfDilutedSharesOutstanding'], 'shares')
+    const sharesBasic = qLatest(['WeightedAverageNumberOfSharesOutstandingBasic'], 'shares')
     const shares = sharesDiluted ?? sharesBasic
 
     // Operating expenses (detail)
-    const rnd = latest(['ResearchAndDevelopmentExpense'])
-    const sga = latest(['SellingGeneralAndAdministrativeExpense', 'GeneralAndAdministrativeExpense'])
-    const sbc = latest(['ShareBasedCompensation', 'AllocatedShareBasedCompensationExpense'])
-    const ppe = latest(['PropertyPlantAndEquipmentNet'])
-    const incomeTax = latest(['IncomeTaxesPaid', 'IncomeTaxExpenseBenefit'])
-    const preTaxIncome = latest(['IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest'])
+    const rnd = qLatest(['ResearchAndDevelopmentExpense'])
+    const sga = qLatest(['SellingGeneralAndAdministrativeExpense', 'GeneralAndAdministrativeExpense'])
+    const sbc = qLatest(['ShareBasedCompensation', 'AllocatedShareBasedCompensationExpense'])
+    const ppe = qLatest(['PropertyPlantAndEquipmentNet'])
+    const incomeTax = qLatest(['IncomeTaxesPaid', 'IncomeTaxExpenseBenefit'])
+    const preTaxIncome = qLatest(['IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest'])
     const impliedTaxRate = preTaxIncome && incomeTax && preTaxIncome > 0 ? incomeTax / preTaxIncome : null
-    const employees = latest(['EntityNumberOfEmployees'], 'pure')
+    const employees = qLatest(['EntityNumberOfEmployees'], 'pure')
     const revenuePerEmployee = revenue && employees ? revenue / employees : null
     // SBC-adjusted FCF (what sophisticated investors use)
     const fcfExSbc = fcf != null && sbc != null ? fcf - sbc : null
@@ -277,6 +311,9 @@ export default async function handler(req, res) {
         ticker: t,
         companyName,
         cik,
+        // 'annual' (10-K) or 'quarterly' (annualized from 10-Qs — recent IPO)
+        dataBasis: useQuarterly && quartersUsed > 0 ? 'quarterly' : 'annual',
+        quartersUsed: useQuarterly ? quartersUsed : null,
         // Income
         revenue,
         prevRevenue,

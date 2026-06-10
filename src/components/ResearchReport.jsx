@@ -243,6 +243,19 @@ export default function ResearchReport({ ticker, financials: fin, result }) {
         @media print { .ax-metric:hover { transform: none !important; } }
       `}</style>
 
+      {/* ── QUARTERLY-BASIS NOTE (recent IPO, no 10-K yet) ── */}
+      {fin.dataBasis === 'quarterly' && (
+        <div style={{ background: `${C.accent}0d`, border: `1px solid ${C.accent}25`, borderLeft: `3px solid ${C.accent}`, borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <span style={{ fontSize: 14, flexShrink: 0 }}>ⓘ</span>
+          <div>
+            <div style={{ fontFamily: C.mono, fontSize: 11, color: C.accent, fontWeight: 600, marginBottom: 3 }}>Quarterly-Basis Financials</div>
+            <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.5 }}>
+              <strong style={{ color: '#e5e5e5' }}>{ticker.toUpperCase()}</strong> has no annual 10-K on file yet (likely a recent IPO). Income and cash-flow figures are annualized from {fin.quartersUsed === 1 ? 'its most recent 10-Q' : `the last ${fin.quartersUsed} quarterly filings`}; balance-sheet items are as of the latest quarter. Treat run-rate figures with appropriate caution.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── THIN DATA WARNING ── */}
       {thinData && (
         <div style={{ background: '#f59e0b0d', border: '1px solid #f59e0b25', borderLeft: '3px solid #f59e0b', borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'flex-start' }}>

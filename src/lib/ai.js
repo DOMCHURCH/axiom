@@ -8,8 +8,12 @@ export async function generateResearch({ ticker, financials, clerkToken, onProgr
     ? `Current Price: $${fin.price.toFixed(2)} | Market Cap: ${dollar(fin.marketCap)} (anchor your 12-month price target to this live price)\n`
     : ''
 
+  const basisNote = fin.dataBasis === 'quarterly'
+    ? `NOTE: No 10-K on file (recent IPO). Income/cash-flow figures below are ANNUALIZED run-rates from the last ${fin.quartersUsed || ''} quarterly filing(s) — refer to them as "annualized" or "run-rate", never as fiscal-year results. Be appropriately cautious in the thesis.\n`
+    : ''
+
   const dataBlock = `${fin.companyName} (${t})
-${marketBlock}
+${marketBlock}${basisNote}
 Revenue: ${dollar(fin.revenue)} | Prev: ${dollar(fin.prevRevenue)} | Growth: ${pct(fin.revenueGrowth)}
 Gross Profit: ${dollar(fin.grossProfit)} | Gross Margin: ${pct(fin.grossMargin)}
 EBIT: ${dollar(fin.ebit)} | EBITDA: ${dollar(fin.ebitda)} | EBITDA Margin: ${pct(fin.ebitdaMargin)}

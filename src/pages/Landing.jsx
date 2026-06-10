@@ -791,8 +791,8 @@ function Pricing({ navigate }) {
                 <span style={{ fontFamily:T.mono, fontSize:60, fontWeight:800, color:T.text, lineHeight:1 }}>$49</span>
                 <span style={{ fontFamily:T.mono, fontSize:13, color:T.text3 }}>/month</span>
               </div>
-              <div style={{ fontSize:13, color:T.text2, marginBottom:36, lineHeight:1.65 }}>No limits. Priority AI. Team access.</div>
-              {['Unlimited reports','Cloud report history','Shareable report links','Priority AI (Claude Opus)','Team accounts (3 seats)','Advanced PDF exports'].map(f=>(
+              <div style={{ fontSize:13, color:T.text2, marginBottom:36, lineHeight:1.65 }}>For power users and teams. Deeper models, bulk runs, exports.</div>
+              {['Priority AI (Claude Opus)','Bulk analysis — run a whole watchlist','Excel model exports (DCF + comps)','Earnings-season alerts on saved tickers','Team workspace (3 seats)','Priority support'].map(f=>(
                 <div key={f} style={{ display:'flex', gap:10, marginBottom:12, fontSize:13, color:T.text2 }}>
                   <span style={{ background:T.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', flexShrink:0 }}>✓</span> {f}
                 </div>
@@ -823,7 +823,7 @@ const FAQS = [
   { q:'How is AXIOM different from a screener?', a:'Screeners give tables of numbers. AXIOM produces a full written research note — DCF model, comparable company analysis, risk matrix, and an investment recommendation — the same output a junior analyst spends hours on.' },
   { q:'Do I need my own AI API key?', a:'No. AXIOM runs entirely on our infrastructure. Create a free account and generate reports immediately — no keys, no configuration, no setup.' },
   { q:'Is it really free? What\'s the catch?', a:'No catch. You can generate a full report right now with no signup. Creating a free account lets you save your reports, revisit them anytime, and build a research library — every section is included, nothing is paywalled on the free tier.' },
-  { q:'When is Pro launching?', a:'Soon. Pro will offer unlimited reports, cloud history, shareable links, and priority AI models. Join the waitlist above to get early access.' },
+  { q:'When is Pro launching?', a:'Soon. Pro adds priority AI models, bulk watchlist analysis, Excel model exports, and team workspaces on top of the free tier. Join the waitlist above to get early access.' },
 ]
 function FAQ() {
   const [open, setOpen] = useState(null)

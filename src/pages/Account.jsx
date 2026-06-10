@@ -4,7 +4,6 @@ import { useUser, useAuth, UserButton, SignInButton } from '@clerk/clerk-react'
 import { palette as T } from '../lib/tokens.js'
 
 const REC_COLOR = { BUY: '#10b981', HOLD: '#f59e0b', SELL: '#ef4444' }
-const FREE_LIMIT = 2
 
 export default function Account() {
   const navigate = useNavigate()
@@ -31,9 +30,6 @@ export default function Account() {
   }, [isSignedIn, getToken])
 
   const isAdmin = usage?.isAdmin
-  const unlimited = isAdmin || usage?.unlimited
-  const usedPct = usage && !unlimited ? (usage.used / FREE_LIMIT) * 100 : 0
-  const resetDate = usage?.resetAt ? new Date(usage.resetAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : null
 
   if (!isSignedIn) {
     return (
@@ -111,36 +107,15 @@ export default function Account() {
 
         {/* Usage card */}
         <div style={{ marginBottom: 28 }}>
-          <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 14 }}>Monthly Usage</div>
-          <div style={{ background: T.panel, border: `1px solid ${T.border}`, borderRadius: 14, padding: '28px 28px', transition: 'border-color 0.2s' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 18 }}>
-              <div>
-                <div style={{ fontFamily: T.mono, fontSize: 36, fontWeight: 700, color: T.text, lineHeight: 1, marginBottom: 6 }}>
-                  {usage ? usage.used : '–'}<span style={{ fontSize: 18, color: T.muted2, fontWeight: 400 }}>/{unlimited ? '∞' : FREE_LIMIT}</span>
-                </div>
-                <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2 }}>reports used this month</div>
+          <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 14 }}>Usage</div>
+          <div style={{ background: T.panel, border: `1px solid ${T.border}`, borderRadius: 14, padding: '28px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <div>
+              <div style={{ fontFamily: T.mono, fontSize: 36, fontWeight: 700, color: T.text, lineHeight: 1, marginBottom: 6 }}>
+                {usage ? usage.used : '–'}<span style={{ fontSize: 18, color: T.muted2, fontWeight: 400 }}> reports</span>
               </div>
-              {resetDate && (
-                <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, textAlign: 'right', lineHeight: 1.7 }}>
-                  <div style={{ color: T.muted }}>Resets</div>
-                  <div style={{ color: T.text2 }}>{resetDate}</div>
-                </div>
-              )}
+              <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2 }}>generated this month</div>
             </div>
-            {/* Progress bar */}
-            <div style={{ height: 6, background: T.border, borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
-              <div style={{
-                height: '100%',
-                background: usedPct >= 100 ? `linear-gradient(90deg, ${T.red}, ${T.red}cc)` : `linear-gradient(90deg, ${T.accent}, #38bdf8)`,
-                width: Math.min(usedPct, 100) + '%',
-                borderRadius: 3,
-                transition: 'width 0.6s ease',
-                boxShadow: usedPct >= 100 ? `0 0 8px ${T.red}40` : `0 0 8px ${T.accent}40`,
-              }} />
-            </div>
-            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>
-              {unlimited ? 'Unlimited reports' : usage ? `${usage.remaining} report${usage.remaining !== 1 ? 's' : ''} remaining` : ''}
-            </div>
+            <div style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, background: T.accentLo, border: `1px solid ${T.accentBd}`, borderRadius: 6, padding: '6px 14px', letterSpacing: 1 }}>∞ UNLIMITED</div>
           </div>
         </div>
 
