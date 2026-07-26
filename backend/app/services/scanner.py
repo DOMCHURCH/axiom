@@ -214,8 +214,15 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
         frames.clear()
         done = min(i + batch_size, len(tickers))
         deep_done = done
-        progress(12 + int(43 * done / total_t),
-                 f"Deep-analysed {done}/{len(tickers)} · {len(survivors)} pass liquidity")
+        # Progress is scaled against what the time budget can realistically reach,
+        # not the full candidate list — otherwise the bar crawls toward a target
+        # the stage was never going to finish, which reads as a stall.
+        spent = time.time() - (deep_deadline - max(3, int(p["deep_seconds"])))
+        pace = done / max(0.5, spent)                     # tickers per second
+        reachable = min(len(tickers), max(done, int(pace * max(3, int(p["deep_seconds"])))))
+        progress(12 + int(43 * min(1.0, done / max(1, reachable))),
+                 f"Deep-analysed {done} of ~{reachable} · {len(survivors)} pass liquidity"
+                 f" · {pace:.0f}/s")
 
     survivors.sort(key=lambda x: (x["tech"].get("trend_score") or 0,
                                   x["tech"].get("momentum") or -1), reverse=True)

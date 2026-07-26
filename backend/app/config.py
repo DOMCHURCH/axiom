@@ -107,8 +107,10 @@ class Settings(BaseSettings):
     # "full" scans the whole SEC universe (~10k listings, ~6k with usable prices);
     # "liquid" scans the curated ~1.5k shortlist and finishes far faster.
     scan_universe: str = Field(default="full", alias="SCAN_UNIVERSE")
-    # Tickers per Yahoo bulk request while streaming the universe.
-    scan_price_batch: int = Field(default=200, alias="SCAN_PRICE_BATCH")
+    # Tickers per streaming chunk. Kept small on purpose: the deep stage's time
+    # budget and the progress bar are both only re-evaluated between chunks, so a
+    # large chunk makes the scan overshoot its budget and look frozen meanwhile.
+    scan_price_batch: int = Field(default=50, alias="SCAN_PRICE_BATCH")
     # yfinance issues ONE request per ticker and defaults to only cpu_count()*2
     # concurrent ones. Set this explicitly — it is the cheapest speedup available.
     scan_yf_threads: int = Field(default=24, alias="SCAN_YF_THREADS")

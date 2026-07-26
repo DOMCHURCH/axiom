@@ -12,6 +12,19 @@ import yfinance as yf
 from app.config import settings
 from app.core.logging import get_logger
 
+# yfinance caches each ticker's exchange timezone in a small SQLite file. If that
+# location isn't writable (common in a container), the cache silently misses and
+# EVERY ticker fires a second chart request purely to read its timezone —
+# doubling the request count of an entire scan. Pin it somewhere writable.
+try:  # pragma: no cover - best effort, never block startup
+    import os as _os
+    _tz_dir = _os.environ.get("YF_CACHE_DIR", "/tmp/yf-cache")
+    _os.makedirs(_tz_dir, exist_ok=True)
+    yf.set_tz_cache_location(_tz_dir)
+except Exception as _exc:  # noqa: BLE001
+    get_logger("yahoo").warning("could not set yfinance tz cache location",
+                                extra={"err": str(_exc)})
+
 log = get_logger("yahoo")
 
 _COLMAP = {
