@@ -9,6 +9,7 @@ from __future__ import annotations
 import pandas as pd
 import yfinance as yf
 
+from app.config import settings
 from app.core.logging import get_logger
 
 log = get_logger("yahoo")
@@ -44,17 +45,26 @@ def fetch_ohlcv(ticker: str, period: str = "1y", interval: str = "1d") -> pd.Dat
     return _normalize(df)
 
 
-def download_batch(tickers: list[str], period: str = "1y",
-                   interval: str = "1d") -> dict[str, pd.DataFrame]:
-    """OHLCV for many tickers in one request. Returns {ticker: DataFrame}."""
+def download_batch(tickers: list[str], period: str = "1y", interval: str = "1d",
+                   threads: int | None = None) -> dict[str, pd.DataFrame]:
+    """OHLCV for many tickers. Returns {ticker: DataFrame}.
+
+    NOTE: despite the name, yfinance does NOT batch these — the Yahoo chart
+    endpoint takes the symbol in the URL path, so `yf.download` issues one HTTP
+    request PER TICKER. Concurrency is therefore the only lever that matters, and
+    yfinance's `threads=True` default is just `cpu_count() * 2` — which is 2-4 on
+    a small container. Passing an explicit thread count is the single cheapest
+    speedup available here.
+    """
     if not tickers:
         return {}
     if len(tickers) == 1:
         return {tickers[0]: fetch_ohlcv(tickers[0], period, interval)}
 
+    workers = threads or settings.scan_yf_threads
     data = yf.download(tickers=" ".join(tickers), period=period, interval=interval,
                        group_by="ticker", auto_adjust=False, actions=False,
-                       threads=True, progress=False, timeout=30)
+                       threads=max(2, int(workers)), progress=False, timeout=30)
     out: dict[str, pd.DataFrame] = {}
     if isinstance(data.columns, pd.MultiIndex):
         available = set(data.columns.get_level_values(0))

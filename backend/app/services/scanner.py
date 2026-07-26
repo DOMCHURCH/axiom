@@ -20,11 +20,12 @@ from sqlalchemy import select
 from app.config import settings
 from app.core.logging import get_logger
 from app.core.ratelimit import BudgetExhausted
-from app.data import fmp, sec, yahoo
+from app.data import fmp, market_snapshot, sec, yahoo
 from app.data.liquid_universe import LIQUID_TICKERS
 from app.data.universe import active_tickers, upsert_universe
 from app.db.models import Company, ScanResult
 from app.db.session import session_scope
+from app.quant import prefilter
 from app.quant.fundamental import compute_fundamentals
 from app.quant.scoring import compute_scores
 from app.quant.technical import compute_technicals
@@ -73,6 +74,7 @@ def _resolve_params(params: dict | None) -> dict:
         "universe": params.get("universe", settings.scan_universe),
         "universe_limit": params.get("universe_limit"),
         "price_batch": params.get("price_batch", settings.scan_price_batch),
+        "prefilter_keep": params.get("prefilter_keep", settings.scan_prefilter_keep),
         "min_price": params.get("min_price", settings.universe_min_price),
         "min_dollar_vol": params.get("min_dollar_vol", settings.universe_min_avg_dollar_volume),
         "min_market_cap": params.get("min_market_cap", settings.universe_min_market_cap),
@@ -120,6 +122,44 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
     # SEC's list, e.g. some ETFs); a no-op for the full universe.
     tickers = [t for t in tickers if t in cmap]
     jobs.update_scan_run(scan_run_id, universe_size=len(tickers), counts_merge={"universe": len(tickers)})
+
+    # ---- Stage 1b: whole-market snapshot + cheap prefilter -----------------
+    # yfinance costs ONE HTTP request per ticker, and compute_technicals costs
+    # ~4.5ms each (~46s for 10.3k names on one core) — both scale with the number
+    # of names that reach them. Yahoo's *quote* endpoint IS batched, so ~70
+    # requests buy us price/volume/SMA/52w for the entire universe, enough to gate
+    # and pre-rank. Only the survivors pay for history. Best-effort: if the
+    # snapshot is unavailable we simply scan everything, exactly as before.
+    snapshot: dict[str, dict] = {}
+    if p["prefilter_keep"] and len(tickers) > p["prefilter_keep"]:
+        progress(6, f"Snapshotting {len(tickers)} tickers")
+        try:
+            snapshot = market_snapshot.whole_market(
+                tickers,
+                on_progress=lambda d, t: progress(6 + int(5 * d / max(1, t)),
+                                                  f"Snapshot {d}/{t} batches"),
+            )
+        except Exception as exc:  # noqa: BLE001 — never let this break a scan
+            log.warning("market snapshot failed; scanning full universe", extra={"err": str(exc)})
+            snapshot = {}
+
+    prefiltered = False
+    if snapshot and len(snapshot) >= len(tickers) * 0.5:
+        liquid = prefilter.liquidity_gate(snapshot, min_price=p["min_price"],
+                                          min_dollar_vol=p["min_dollar_vol"])
+        candidates = prefilter.prerank(snapshot, liquid, keep=p["prefilter_keep"])
+        if candidates:
+            log.info("prefilter narrowed universe",
+                     extra={"universe": len(tickers), "liquid": len(liquid),
+                            "candidates": len(candidates)})
+            jobs.update_scan_run(scan_run_id, counts_merge={
+                "snapshot": len(snapshot), "liquid": len(liquid),
+                "candidates": len(candidates)})
+            tickers = candidates
+            prefiltered = True
+    if not prefiltered:
+        log.info("no prefilter — scanning the full universe",
+                 extra={"snapshot_rows": len(snapshot), "tickers": len(tickers)})
 
     # ---- Stage 2+3+4: STREAMED prices -> technicals -> liquidity gate ------
     # Streaming is what makes a full ~10k-name scan viable: prices arrive one

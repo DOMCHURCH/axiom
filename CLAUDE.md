@@ -27,10 +27,24 @@ Polygon (optional real-time) · FRED (optional macro). Only OpenRouter + FMP key
 are needed to get full value; everything else is optional/free.
 
 ## The scanner funnel ("Find Best Stocks")
-`universe → bulk Yahoo prices → liquidity gate → technical rank →
-staged FMP/SEC fundamental enrichment → six-factor composite score → rank → top-N`
-Cheap unlimited data filters the whole universe; only the strongest technical
-candidates consume the rate-limited fundamental APIs. See `docs/ARCHITECTURE.md` §5.
+`universe → batched whole-market snapshot → cheap prefilter → per-ticker history
+→ technicals + exact liquidity gate → staged FMP enrichment → six-factor
+composite score → rank → top-N`
+
+Two measured facts drive this shape, and both are easy to get wrong:
+1. **yfinance issues one HTTP request per ticker** (the Yahoo chart endpoint takes
+   the symbol in the URL path), and defaults to only `cpu_count()*2` concurrent
+   requests — 2–4 on a small container. `SCAN_YF_THREADS` sets it explicitly.
+2. **`compute_technicals` costs ~4.5 ms/ticker** — ~46 s for 10.3k names on one
+   core, i.e. over budget before any network call.
+
+So the scan never sends the whole universe down the expensive path. Yahoo's
+*quote* endpoint IS batched (~70 requests for the whole market), which is enough
+to gate on liquidity and pre-rank; only ~600 survivors pay for price history.
+The prefilter gates with a deliberate safety margin and never drops a name whose
+data is missing — the exact technicals stay authoritative. If the snapshot is
+unavailable the scan simply falls back to scanning everything.
+See `docs/ARCHITECTURE.md` §5.
 
 ## Scoring (deterministic, in Python — `backend/app/quant/scoring.py`)
 Six 0–100 sub-scores + a weighted composite → recommendation

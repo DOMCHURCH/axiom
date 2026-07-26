@@ -105,14 +105,22 @@ class Settings(BaseSettings):
     scan_universe: str = Field(default="full", alias="SCAN_UNIVERSE")
     # Tickers per Yahoo bulk request while streaming the universe.
     scan_price_batch: int = Field(default=200, alias="SCAN_PRICE_BATCH")
-    # Only the strongest technical candidates get (rate-limited) fundamentals —
-    # we surface a top-10, so enriching 40 is ample and keeps the stage short.
-    scan_technical_keep: int = 40
+    # yfinance issues ONE request per ticker and defaults to only cpu_count()*2
+    # concurrent ones. Set this explicitly — it is the cheapest speedup available.
+    scan_yf_threads: int = Field(default=24, alias="SCAN_YF_THREADS")
+    # Two-pass funnel: snapshot the whole market cheaply (batched quote endpoint),
+    # then fetch per-ticker history for only this many pre-ranked survivors.
+    # 0 disables the prefilter and scans every name (much slower).
+    scan_prefilter_keep: int = Field(default=600, alias="SCAN_PREFILTER_KEEP")
+    # Only the strongest technical candidates get (rate-limited) fundamentals.
+    # 6 FMP calls each against a 250/day free tier means ~20 names is also the
+    # most we can afford per scan without burning the daily budget in one run.
+    scan_technical_keep: int = 20
     # The funnel narrows to a short list of the day's best contenders.
     scan_top_n: int = 10
     # Wall-clock cap (seconds) for the rate-limited FMP enrichment stage; names
     # not enriched in time are scored technical-only so the scan always finishes.
-    scan_enrich_seconds: int = 45
+    scan_enrich_seconds: int = 12
 
     # -------------------------------------------------------------- helpers
     @staticmethod
