@@ -160,9 +160,16 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
                 "liquid": len(liquid), "candidates": len(candidates)})
             tickers = candidates
             prefiltered = True
-    if not prefiltered:
-        log.info("no prefilter — scanning the full universe",
-                 extra={"snapshot_rows": len(snapshot), "tickers": len(tickers)})
+    if not prefiltered and len(tickers) > p["prefilter_keep"]:
+        # The fast path is off. Say so loudly rather than silently taking minutes:
+        # without the snapshot every name needs its own history request.
+        reason = ("snapshot returned no rows" if not snapshot
+                  else f"snapshot covered only {len(snapshot)}/{len(tickers)}")
+        log.warning("PREFILTER OFF — falling back to the slow full-universe scan",
+                    extra={"reason": reason, "tickers": len(tickers)})
+        jobs.update_scan_run(scan_run_id, counts_merge={
+            "degraded": True, "degraded_reason": reason})
+        progress(11, f"Market snapshot unavailable ({reason}) — scanning directly")
 
     # ---- Stage 2+3+4: STREAMED prices -> technicals -> liquidity gate ------
     # Streaming is what makes a full ~10k-name scan viable: prices arrive one

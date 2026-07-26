@@ -251,6 +251,10 @@ export default function BestStocks() {
               <h1 style={{ fontFamily: T.sans, fontSize: 'clamp(20px,3vw,28px)', fontWeight: 800, letterSpacing: '-0.02em',
                 color: T.text, lineHeight: 1.1, margin: 0 }}>Best stocks of the day</h1>
               <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2, marginTop: 6 }}>
+                {counts.degraded && (
+                  <span title={counts.degraded_reason || 'market snapshot unavailable'}
+                    style={{ color: T.gold, marginRight: 8 }}>⚠ slow path</span>
+                )}
                 {scanned != null
                   ? <>Scanned <span style={{ color: T.text }}>{fmtNum(scanned, 0)}</span>
                       {analyzed != null && <> · analysed <span style={{ color: T.text }}>{fmtNum(analyzed, 0)}</span></>}
