@@ -245,6 +245,12 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
         fund: dict | None = None
         source = "none"
 
+        # Report BEFORE the slow work, not after: otherwise the UI sits on the
+        # stage's opening message for as long as the first candidate takes, which
+        # is indistinguishable from a hang.
+        mode = "technical-only" if fmp_exhausted else "fundamentals"
+        progress(60 + int(25 * i / total), f"Scoring {i + 1}/{len(keep)} {ticker} · {mode}")
+
         if not fmp_exhausted and time.time() >= enrich_deadline:
             fmp_exhausted = True
             log.info("FMP enrichment time budget reached; remaining names technical-only",
@@ -289,9 +295,6 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
         ranked.append({"ticker": ticker, "company_id": cid, "scores": scores,
                        "total": scores.get("total_score") or 0})
 
-        # update every candidate so the UI never looks frozen mid-stage
-        mode = "technical-only" if fmp_exhausted else "fundamentals"
-        progress(60 + int(25 * (i + 1) / total), f"Scoring {i + 1}/{len(keep)} · {mode}")
 
     jobs.update_scan_run(scan_run_id, counts_merge={"enriched": len(ranked)})
 

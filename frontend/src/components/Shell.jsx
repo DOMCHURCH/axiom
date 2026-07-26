@@ -1,11 +1,15 @@
 // AXIOM app shell — a frosty-white glass dashboard that floats inset from the
 // viewport edges over the interactive Bayer-dither WebGL background.
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DitherBackground from './DitherBackground.jsx'
+import { health } from '../lib/api.js'
 import { palette as T, shellFrame } from '../lib/tokens.js'
 
 export default function Shell({ children, footerNote }) {
   const navigate = useNavigate()
+  const [build, setBuild] = useState(null)
+  useEffect(() => { health().then(setBuild).catch(() => {}) }, [])
   return (
     <>
       <DitherBackground />
@@ -59,7 +63,15 @@ export default function Shell({ children, footerNote }) {
               </>
             )}
             <span className="ax-hide-sm" style={{ fontFamily: T.mono, fontSize: 9,
-              color: T.muted, marginLeft: 'auto' }}>click anywhere to ripple</span>
+              color: T.muted, marginLeft: 'auto', display: 'flex', gap: 10 }}>
+              {build && (
+                <span title={`branch ${build.branch || '?'} · universe ${build.scan?.universe} · deep ${build.scan?.deep_seconds}s · FMP ${build.scan?.fmp_key ? 'on' : 'off'}`}
+                  style={{ color: build.commit ? T.muted : T.red }}>
+                  build {build.commit || 'unknown'} · v{build.version}
+                </span>
+              )}
+              <span>click anywhere to ripple</span>
+            </span>
           </footer>
         </div>
       </div>

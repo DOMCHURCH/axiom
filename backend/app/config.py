@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed browser origins, or "*" for any (default).
     frontend_origin: str = Field(default="*", alias="FRONTEND_ORIGIN")
 
+    # ---- build identity (Railway injects these; used to spot a stale deploy) ----
+    git_sha: str = Field(default="", alias="RAILWAY_GIT_COMMIT_SHA")
+    git_branch: str = Field(default="", alias="RAILWAY_GIT_BRANCH")
+
     # ---- auth ----
     # AXIOM has no login. Leave APP_TOKEN empty to keep the API open (default).
     # Set it to any string to re-enable single-user bearer-token protection.

@@ -31,6 +31,10 @@ export const scanResults = (runId, { limit = 100, sort = 'rank' } = {}) =>
   req(`/scanner/results/${runId}?limit=${limit}&sort=${sort}`)
 export const latestResults = ({ limit = 100 } = {}) => req(`/scanner/latest?limit=${limit}`)
 
+// Which backend build is live (commit/branch/scan settings) — makes a stale
+// deploy obvious instead of something to infer from UI symptoms.
+export const health = () => req('/health')
+
 // ── Market / dashboard ──
 export const marketOverview = () => req('/market/overview')
 export const marketTop = (limit = 15) => req(`/market/top?limit=${limit}`)
