@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Shell from '../components/Shell.jsx'
 import { FactorGrid, RecBadge, ScoreRing } from '../components/ui.jsx'
-import { palette as T } from '../lib/tokens.js'
+import { glass, palette as T } from '../lib/tokens.js'
 import {
   latestResults, marketOverview, pollJob, runScan, scanResults, scoreColor,
 } from '../lib/api.js'
@@ -14,11 +14,11 @@ function StockCard({ r, onClick }) {
   const subs = r.sub_scores || {}
   return (
     <button onClick={onClick} className="ax-card"
-      style={{ textAlign: 'left', background: T.panel, border: `1px solid ${T.border}`, borderRadius: 14,
+      style={{ ...glass, textAlign: 'left', borderRadius: 16,
         padding: 18, cursor: 'pointer', display: 'flex', gap: 16, alignItems: 'center', width: '100%',
-        transition: 'all 0.16s cubic-bezier(0.16,1,0.3,1)' }}
-      onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.accentBd; e.currentTarget.style.background = T.panelHov; e.currentTarget.style.transform = 'translateY(-2px)' }}
-      onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.background = T.panel; e.currentTarget.style.transform = 'translateY(0)' }}>
+        transition: 'all 0.18s cubic-bezier(0.16,1,0.3,1)' }}
+      onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.accentBd; e.currentTarget.style.background = T.glassHov; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 16px 44px rgba(0,0,0,0.45), 0 0 0 1px ${T.accentBd}, inset 0 1px 0 rgba(255,255,255,0.08)` }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.background = T.glass; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = glass.boxShadow }}>
       <div style={{ fontFamily: T.mono, fontSize: 13, fontWeight: 700, color: T.muted2, width: 30,
         textAlign: 'center', flexShrink: 0 }}>#{r.rank}</div>
       <ScoreRing value={total} size={62} />
@@ -103,19 +103,19 @@ export default function BestStocks() {
           </p>
 
           <button onClick={findBestStocks} disabled={scanning}
-            style={{ background: scanning ? T.bg3 : 'linear-gradient(135deg,#0ea5e9,#38bdf8)',
-              color: scanning ? T.muted : '#001018', border: 'none', borderRadius: 12, padding: '15px 40px',
+            style={{ background: scanning ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg,#f5a524,#ffc25a)',
+              color: scanning ? T.muted2 : '#1a1206', border: 'none', borderRadius: 14, padding: '15px 40px',
               fontFamily: T.mono, fontSize: 14, fontWeight: 700, letterSpacing: 0.4,
-              cursor: scanning ? 'wait' : 'pointer', boxShadow: scanning ? 'none' : '0 4px 24px #0ea5e930',
+              cursor: scanning ? 'wait' : 'pointer', boxShadow: scanning ? 'none' : `0 8px 30px ${T.accentGlow}`,
               transition: 'all 0.15s' }}>
             {scanning ? 'Scanning market…' : '⚡ Find Best Stocks'}
           </button>
 
           {scanning && (
             <div style={{ maxWidth: 420, margin: '22px auto 0' }}>
-              <div style={{ height: 3, background: T.border, borderRadius: 2, overflow: 'hidden', marginBottom: 9 }}>
-                <div style={{ height: '100%', width: `${progress.pct}%`, background: `linear-gradient(90deg,${T.accent},#38bdf8)`,
-                  borderRadius: 2, transition: 'width 0.5s ease' }} />
+              <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 999, overflow: 'hidden', marginBottom: 9 }}>
+                <div style={{ height: '100%', width: `${progress.pct}%`, background: `linear-gradient(90deg,${T.accent},${T.accentHi})`,
+                  boxShadow: `0 0 12px ${T.accentGlow}`, borderRadius: 999, transition: 'width 0.5s ease' }} />
               </div>
               <div style={{ fontFamily: T.mono, fontSize: 11, color: T.accent }}>{progress.stage}</div>
             </div>

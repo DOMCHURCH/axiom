@@ -88,7 +88,7 @@ export const scoreColor = (s) => {
   if (s == null) return '#475569'
   if (s >= 80) return '#22c55e'
   if (s >= 68) return '#4ade80'
-  if (s >= 52) return '#38bdf8'
+  if (s >= 52) return '#f5a524'
   if (s >= 38) return '#f59e0b'
   return '#f87171'
 }

@@ -1,18 +1,19 @@
 // Shared AXIOM UI primitives — recommendation badge, score bar, factor grid,
-// stat tiles, section wrapper. All styled from the report token palette.
-import { report as C } from '../lib/tokens.js'
+// stat tiles, glass section wrapper. Styled from the glassmorphism token system.
+import { glass, glassInner, report as C } from '../lib/tokens.js'
 import { REC_COLOR, scoreColor, fmtNum } from '../lib/api.js'
 
 export function RecBadge({ rec, size = 'md' }) {
   if (!rec) return null
   const color = REC_COLOR[rec] || C.muted2
-  const pad = size === 'lg' ? '6px 14px' : size === 'sm' ? '2px 8px' : '4px 11px'
+  const pad = size === 'lg' ? '6px 15px' : size === 'sm' ? '3px 9px' : '5px 12px'
   const fs = size === 'lg' ? 13 : size === 'sm' ? 9 : 11
   return (
     <span style={{
       fontFamily: C.mono, fontSize: fs, fontWeight: 700, color,
-      background: color + '18', border: `1px solid ${color}40`, borderRadius: 6,
+      background: color + '1f', border: `1px solid ${color}45`, borderRadius: 999,
       padding: pad, letterSpacing: 0.6, whiteSpace: 'nowrap',
+      boxShadow: `0 0 18px ${color}22, inset 0 1px 0 rgba(255,255,255,0.06)`,
     }}>{rec.toUpperCase()}</span>
   )
 }
@@ -24,11 +25,12 @@ export function ScoreBar({ label, value, width }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted2, width: width || 84,
         textTransform: 'uppercase', letterSpacing: 0.8, flexShrink: 0 }}>{label}</div>
-      <div style={{ flex: 1, height: 6, background: C.bg, borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3,
-          transition: 'width 0.4s cubic-bezier(0.16,1,0.3,1)' }} />
+      <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, borderRadius: 999,
+          background: `linear-gradient(90deg, ${color}cc, ${color})`, boxShadow: `0 0 10px ${color}55`,
+          transition: 'width 0.5s cubic-bezier(0.16,1,0.3,1)' }} />
       </div>
-      <div className="tnum" style={{ fontFamily: C.mono, fontSize: 11, color: value == null ? C.muted : '#e8eef7',
+      <div className="tnum" style={{ fontFamily: C.mono, fontSize: 11, color: value == null ? C.muted : C.text || '#f4f5f7',
         width: 30, textAlign: 'right', flexShrink: 0 }}>{value == null ? '—' : Math.round(value)}</div>
     </div>
   )
@@ -54,11 +56,11 @@ export function FactorGrid({ scores, compact }) {
 
 export function StatTile({ label, value, sub, color }) {
   return (
-    <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '13px 15px' }}>
+    <div style={{ ...glassInner, padding: '13px 15px' }}>
       <div style={{ fontFamily: C.mono, fontSize: 9.5, color: C.muted2, textTransform: 'uppercase',
         letterSpacing: 1, marginBottom: 7 }}>{label}</div>
       <div className="tnum" style={{ fontFamily: C.mono, fontSize: 18, fontWeight: 700,
-        color: color || '#f0f6ff', lineHeight: 1 }}>{value}</div>
+        color: color || '#f4f5f7', lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted2, marginTop: 5 }}>{sub}</div>}
     </div>
   )
@@ -66,8 +68,7 @@ export function StatTile({ label, value, sub, color }) {
 
 export function Section({ title, right, children, style }) {
   return (
-    <section style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 14,
-      padding: 22, ...style }}>
+    <section style={{ ...glass, padding: 24, ...style }}>
       {title && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <h2 style={{ fontFamily: C.mono, fontSize: 11, color: C.accent, textTransform: 'uppercase',
@@ -88,8 +89,8 @@ export function ScoreRing({ value, size = 84 }) {
   const dash = (v / 100) * circ
   return (
     <div style={{ position: 'relative', width: size, height: size }}>
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={C.border} strokeWidth="6" />
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', filter: `drop-shadow(0 0 6px ${color}55)` }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="6"
           strokeLinecap="round" strokeDasharray={`${dash} ${circ}`}
           style={{ transition: 'stroke-dasharray 0.6s cubic-bezier(0.16,1,0.3,1)' }} />

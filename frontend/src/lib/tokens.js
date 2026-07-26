@@ -1,102 +1,95 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// AXIOM design tokens — single source of truth for the visual system.
-//
-// Three coordinated surfaces share these tokens so the palette can no longer
-// drift between files:
-//   • palette — the product/app shell (navy + cyan).  App, Account.
-//   • report  — the research-report surface (navy, recessed inner cards).
-//   • brand   — the marketing/landing identity (violet→blue→cyan gradient).
-//
-// Type families are shared across all three.
+// AXIOM design system — premium glassmorphism.
+// Dark charcoal base, layered frosted-glass panels with backdrop blur, soft
+// borders + inner highlights, restrained warm-amber accent. One source of truth.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const mono = "'IBM Plex Mono', 'Courier New', monospace"
 export const sans = "'Inter', system-ui, -apple-system, sans-serif"
 
-// Spacing scale (px) — 4pt base. Use for gaps/padding to keep rhythm consistent.
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48 }
+export const radius = { sm: 8, md: 12, lg: 16, xl: 20, xxl: 26, pill: 999 }
 
-// Border-radius scale.
-export const radius = { sm: 6, md: 8, lg: 12, xl: 16, xxl: 20, pill: 999 }
-
-// Elevation — layered, low-spread shadows (institutional, not glowy).
-export const elevation = {
-  sm: '0 1px 2px rgba(0,0,0,0.4)',
-  md: '0 4px 16px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.4)',
-  lg: '0 16px 48px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.4)',
-}
-
-// Motion — shared easing + durations so interactions feel like one product.
-export const ease = 'cubic-bezier(0.16,1,0.3,1)'
-export const easeOut = 'cubic-bezier(0.4,0,0.2,1)'
-export const motion = { fast: '0.15s', base: '0.2s', slow: '0.4s' }
-
-// ── Product / app-shell palette (App.jsx, Account.jsx) ──
+// ── Core palette ──
 export const palette = {
-  bg:       '#050810',
-  bg2:      '#07091a',
-  bg3:      '#0a0d24',
-  panel:    '#0d1228',
-  panelHov: '#101530',
-  border:   '#1a2744',
-  border2:  '#243358',
-  accent:   '#0ea5e9',
-  accentLo: '#0ea5e910',
-  accentBd: '#0ea5e935',
-  accentMid:'#0ea5e960',
-  green:    '#10b981',
-  greenLo:  '#10b98115',
-  red:      '#ef4444',
-  gold:     '#f59e0b',
-  text:     '#f0f6ff',
-  text2:    '#94a3b8',
-  text3:    '#64748b',
-  muted:    '#3d5470',
-  muted2:   '#6b849e',
+  // charcoal base + subtle elevation steps
+  bg:       '#0c0d10',
+  bg2:      '#0e0f13',
+  bg3:      '#131419',
+  // frosted glass surfaces (semi-transparent, meant for backdrop-blur)
+  glass:    'rgba(255,255,255,0.045)',
+  glassHov: 'rgba(255,255,255,0.07)',
+  glass2:   'rgba(255,255,255,0.028)',   // recessed inner cards
+  panel:    'rgba(255,255,255,0.045)',
+  panelHov: 'rgba(255,255,255,0.075)',
+  // hairline borders + highlights
+  border:   'rgba(255,255,255,0.08)',
+  border2:  'rgba(255,255,255,0.14)',
+  highlight:'rgba(255,255,255,0.06)',    // inset top edge
+  // warm amber accent (restrained)
+  accent:   '#f5a524',
+  accentHi: '#ffc25a',
+  accentLo: 'rgba(245,165,36,0.10)',
+  accentBd: 'rgba(245,165,36,0.32)',
+  accentMid:'rgba(245,165,36,0.55)',
+  accentGlow:'rgba(245,165,36,0.28)',
+  // semantic
+  green:    '#4ade80',
+  greenLo:  'rgba(74,222,128,0.12)',
+  red:      '#f87171',
+  gold:     '#f5a524',
+  // text
+  text:     '#f4f5f7',
+  text2:    '#b6bac4',
+  text3:    '#8a8f9c',
+  muted:    '#6b7280',
+  muted2:   '#9aa0ad',
   mono,
   sans,
 }
 
-// ── Research-report surface (ResearchReport.jsx, charts.jsx) ──
+// ── Report surface (shares the glass system) ──
 export const report = {
-  bg:        '#070b1a',   // inner / recessed surface (metric cards)
-  panel:     '#0d1228',   // primary panel
-  panel2:    '#101630',   // raised panel
-  border:    '#1a2744',
-  border2:   '#243358',
-  accent:    '#38bdf8',
-  accentDim: '#38bdf812',
-  positive:  '#22c55e',
+  bg:        'rgba(255,255,255,0.028)',  // recessed inner
+  panel:     'rgba(255,255,255,0.045)',
+  panel2:    'rgba(255,255,255,0.07)',
+  border:    'rgba(255,255,255,0.08)',
+  border2:   'rgba(255,255,255,0.14)',
+  accent:    '#f5a524',
+  accentDim: 'rgba(245,165,36,0.10)',
+  positive:  '#4ade80',
   negative:  '#f87171',
-  warning:   '#f59e0b',
-  muted:     '#475569',
-  muted2:    '#64748b',
+  warning:   '#f5a524',
+  muted:     '#6b7280',
+  muted2:    '#9aa0ad',
   mono,
   sans,
-  shadowSm:  elevation.sm,
-  shadow:    elevation.md,
-  shadowLg:  elevation.lg,
+  shadowSm:  '0 1px 2px rgba(0,0,0,0.4)',
+  shadow:    '0 8px 28px rgba(0,0,0,0.38)',
+  shadowLg:  '0 20px 60px rgba(0,0,0,0.5)',
 }
 
-// ── Marketing / landing identity (Landing.jsx) ──
-export const brand = {
-  bg:         '#04040a',
-  bg2:        '#07071200',
-  panel:      'rgba(255,255,255,0.03)',
-  panelSolid: '#0c0c1a',
-  border:     'rgba(255,255,255,0.07)',
-  border2:    'rgba(255,255,255,0.12)',
-  violet:     '#7c3aed',
-  blue:       '#2563eb',
-  cyan:       '#06b6d4',
-  green:      '#10b981',
-  red:        '#ef4444',
-  gold:       '#f59e0b',
-  text:       '#ffffff',
-  text2:      '#94a3b8',
-  text3:      '#475569',
-  mono,
-  sans,
-  grad:       'linear-gradient(135deg, #7c3aed, #2563eb, #06b6d4)',
-  gradHover:  'linear-gradient(135deg, #6d28d9, #1d4ed8, #0891b2)',
+// ── Glass panel style helpers (spread into inline style) ──
+export const glass = {
+  background: palette.glass,
+  backdropFilter: 'blur(22px) saturate(150%)',
+  WebkitBackdropFilter: 'blur(22px) saturate(150%)',
+  border: `1px solid ${palette.border}`,
+  borderRadius: radius.xl,
+  boxShadow: '0 10px 34px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.07)',
 }
+export const glassInner = {
+  background: palette.glass2,
+  border: `1px solid ${palette.border}`,
+  borderRadius: radius.lg,
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.045)',
+}
+
+// Ambient background — soft accent glow blobs behind the frosted glass.
+export const ambientBg =
+  `radial-gradient(1100px 620px at 12% -8%, rgba(245,165,36,0.10), transparent 60%),` +
+  `radial-gradient(900px 560px at 100% 0%, rgba(120,140,255,0.06), transparent 55%),` +
+  `radial-gradient(800px 800px at 50% 120%, rgba(245,165,36,0.05), transparent 60%),` +
+  `#0c0d10`
+
+export const brand = { ...palette, grad: 'linear-gradient(135deg,#f5a524,#ffc25a)' }

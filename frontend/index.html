@@ -12,8 +12,13 @@
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       html { scroll-behavior: smooth; }
       body {
-        background: #050810;
-        color: #e2e8f0;
+        background:
+          radial-gradient(1100px 620px at 12% -8%, rgba(245,165,36,0.10), transparent 60%),
+          radial-gradient(900px 560px at 100% 0%, rgba(120,140,255,0.06), transparent 55%),
+          radial-gradient(800px 800px at 50% 120%, rgba(245,165,36,0.05), transparent 60%),
+          #0c0d10;
+        background-attachment: fixed;
+        color: #f4f5f7;
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
         font-feature-settings: 'cv05' 1, 'ss01' 1;
         -webkit-font-smoothing: antialiased;
@@ -24,16 +29,16 @@
          financial data align digit-for-digit, the institutional standard. */
       .tnum, table, input, [data-num] { font-variant-numeric: tabular-nums lining-nums; }
       code, kbd, pre, .mono { font-variant-numeric: tabular-nums lining-nums; }
-      ::selection { background: #0ea5e933; color: #bae6fd; }
-      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::selection { background: rgba(245,165,36,0.28); color: #ffe6b0; }
+      ::-webkit-scrollbar { width: 9px; height: 9px; }
       ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
-      ::-webkit-scrollbar-thumb:hover { background: #2b537f; background-clip: padding-box; }
-      * { scrollbar-width: thin; scrollbar-color: #1e3a5f transparent; }
+      ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); background-clip: padding-box; }
+      * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.14) transparent; }
       /* Smooth transitions for interactive elements */
       button, a { transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1); }
       /* Focus visible for accessibility */
-      :focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; border-radius: 4px; }
+      :focus-visible { outline: 2px solid rgba(245,165,36,0.7); outline-offset: 2px; border-radius: 6px; }
       /* Respect reduced-motion — disable parallax, reveals, and long transitions */
       @media (prefers-reduced-motion: reduce) {
         html { scroll-behavior: auto; }

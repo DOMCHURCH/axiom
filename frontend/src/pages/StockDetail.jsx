@@ -159,9 +159,10 @@ export default function StockDetail() {
               letterSpacing: 2 }}>AI Research Note</div>
             {(!report || genState.running) && (
               <button onClick={generateReport} disabled={genState.running}
-                style={{ fontFamily: T.mono, fontSize: 11, color: genState.running ? T.muted : '#001018',
-                  background: genState.running ? T.bg3 : 'linear-gradient(135deg,#0ea5e9,#38bdf8)', border: 'none',
-                  borderRadius: 8, padding: '8px 16px', cursor: genState.running ? 'wait' : 'pointer', fontWeight: 700 }}>
+                style={{ fontFamily: T.mono, fontSize: 11, color: genState.running ? T.muted2 : '#1a1206',
+                  background: genState.running ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg,#f5a524,#ffc25a)', border: 'none',
+                  borderRadius: 10, padding: '9px 17px', cursor: genState.running ? 'wait' : 'pointer', fontWeight: 700,
+                  boxShadow: genState.running ? 'none' : `0 6px 20px ${T.accentGlow}` }}>
                 {genState.running ? (genState.stage || 'Generating…') : '⚡ Generate deep analysis'}
               </button>
             )}

@@ -25,8 +25,8 @@ export default function PriceChart({ candles, height = 380 }) {
       timeScale: { borderColor: 'rgba(255,255,255,0.08)', timeVisible: false },
       crosshair: {
         mode: 1,
-        vertLine: { color: 'rgba(56,189,248,0.4)', labelBackgroundColor: '#0d1228' },
-        horzLine: { color: 'rgba(56,189,248,0.4)', labelBackgroundColor: '#0d1228' },
+        vertLine: { color: 'rgba(245,165,36,0.45)', labelBackgroundColor: '#1a1206' },
+        horzLine: { color: 'rgba(245,165,36,0.45)', labelBackgroundColor: '#1a1206' },
       },
       autoSize: true,
     })
