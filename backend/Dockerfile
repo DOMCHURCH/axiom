@@ -24,7 +24,7 @@ COPY . .
 
 EXPOSE 8080
 
-# Bind Railway's injected $PORT (defaults to 8080). The railway.json start
-# command normally overrides this (it also runs the DB migration first), but
-# this fallback keeps the port correct even if run directly.
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
+# Listen on a fixed 8080 so the container port always matches the Railway
+# domain's target port (avoids 502s from $PORT being empty or mismatched).
+# The railway.json start command overrides this to also run the DB migration.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
