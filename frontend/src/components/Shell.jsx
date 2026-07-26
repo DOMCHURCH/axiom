@@ -9,7 +9,8 @@ import { palette as T, shellFrame } from '../lib/tokens.js'
 export default function Shell({ children, footerNote }) {
   const navigate = useNavigate()
   const [build, setBuild] = useState(null)
-  useEffect(() => { health().then(setBuild).catch(() => {}) }, [])
+  const [buildErr, setBuildErr] = useState(false)
+  useEffect(() => { health().then(setBuild).catch(() => setBuildErr(true)) }, [])
   return (
     <>
       <DitherBackground />
@@ -64,12 +65,15 @@ export default function Shell({ children, footerNote }) {
             )}
             <span className="ax-hide-sm" style={{ fontFamily: T.mono, fontSize: 9,
               color: T.muted, marginLeft: 'auto', display: 'flex', gap: 10 }}>
-              {build && (
-                <span title={`branch ${build.branch || '?'} · universe ${build.scan?.universe} · deep ${build.scan?.deep_seconds}s · FMP ${build.scan?.fmp_key ? 'on' : 'off'}`}
-                  style={{ color: build.commit ? T.muted : T.red }}>
+              {build ? (
+                <span title={`branch ${build.branch || '?'} · universe ${build.scan?.universe} · deep ${build.scan?.deep_seconds}s · keep ${build.scan?.technical_keep} · FMP ${build.scan?.fmp_key ? 'on' : 'off'}`}
+                  style={{ color: T.muted }}>
                   build {build.commit || 'unknown'} · v{build.version}
+                  {build.scan ? ` · keep ${build.scan.technical_keep}` : ''}
                 </span>
-              )}
+              ) : buildErr ? (
+                <span style={{ color: T.red }}>API unreachable</span>
+              ) : null}
               <span>click anywhere to ripple</span>
             </span>
           </footer>

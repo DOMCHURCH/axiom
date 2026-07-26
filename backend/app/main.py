@@ -69,6 +69,24 @@ async def healthz() -> dict:
     return {"name": settings.app_name, "version": __version__, "docs": "/docs"}
 
 
+@app.get("/version")
+async def version() -> dict:
+    """Dead-simple build probe: no DB, no router, no auth.
+
+    If this returns JSON you are talking to the AXIOM backend. If it returns the
+    HTML page instead, you are hitting a static frontend-only service and the API
+    lives somewhere else — which is the usual reason the app looks alive but
+    nothing loads.
+    """
+    return {
+        "name": settings.app_name,
+        "version": __version__,
+        "commit": settings.git_sha[:7] if settings.git_sha else None,
+        "branch": settings.git_branch or None,
+        "serves_frontend": STATIC_DIR.is_dir(),
+    }
+
+
 # Serve the built React SPA for every non-API path (assets served directly,
 # client-side routes fall back to index.html). Registered LAST so it never
 # shadows the API. If no build is present (pure-API dev), this is skipped.

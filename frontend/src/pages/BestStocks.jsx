@@ -8,7 +8,8 @@ import { FactorGrid, RecBadge, ScoreRing } from '../components/ui.jsx'
 import { Sparkline } from '../components/charts.jsx'
 import { glass, glassInner, palette as T } from '../lib/tokens.js'
 import {
-  REC_COLOR, fmtNum, latestResults, marketOverview, pollJob, runScan, scanResults, scoreColor,
+  API_BASE, REC_COLOR, fmtNum, latestResults, marketOverview, pollJob, runScan,
+  scanResults, scoreColor,
 } from '../lib/api.js'
 
 // The funnel narrows a ~1.5k-name liquid universe down to this many contenders.
@@ -150,6 +151,7 @@ export default function BestStocks() {
   const [progress, setProgress] = useState({ pct: 0, stage: '' })
   const [error, setError] = useState('')
   const [loaded, setLoaded] = useState(false)
+  const [apiError, setApiError] = useState('')
   const [wide, setWide] = useState(true)
 
   useEffect(() => {
@@ -161,10 +163,19 @@ export default function BestStocks() {
   }, [])
 
   useEffect(() => {
+    // Track reachability separately: an unreachable API must NOT look like an
+    // empty scan. Silently swallowing this is why a broken backend used to be
+    // indistinguishable from "no results yet".
+    let apiDown = false
     Promise.all([
-      latestResults({ limit: TOP_N }).catch(() => ({ results: [] })),
+      latestResults({ limit: TOP_N }).catch((e) => { apiDown = true; setApiError(e.message || 'unreachable'); return { results: [] } }),
       marketOverview().catch(() => null),
-    ]).then(([latest, ov]) => { setResults(latest?.results || []); setOverview(ov); setLoaded(true) })
+    ]).then(([latest, ov]) => {
+      setResults(latest?.results || [])
+      setOverview(ov)
+      setLoaded(true)
+      if (!apiDown) setApiError('')
+    })
   }, [])
 
   async function findBestStocks() {
@@ -352,6 +363,19 @@ export default function BestStocks() {
               ranked.map((r, i) => (
                 <StockRow key={r.ticker} r={r} first={i === 0} wide={wide} onClick={() => navigate(`/stock/${r.ticker}`)} />
               ))
+            ) : loaded && apiError ? (
+              <div style={{ padding: '34px 24px', fontFamily: T.mono, fontSize: 12.5, lineHeight: 1.8, color: T.text2 }}>
+                <div style={{ color: T.red, fontSize: 13, marginBottom: 10 }}>⚠ Can't reach the AXIOM API</div>
+                <div style={{ color: T.muted2 }}>{apiError}</div>
+                <div style={{ marginTop: 14, color: T.muted2 }}>
+                  Tried <span style={{ color: T.text }}>{API_BASE}</span>
+                </div>
+                <div style={{ marginTop: 12, color: T.muted2 }}>
+                  Open <span style={{ color: T.accent }}>{window.location.origin}/version</span> —
+                  JSON means the backend is live; the HTML page means this domain only serves
+                  the frontend and the API is elsewhere.
+                </div>
+              </div>
             ) : loaded && !scanning ? (
               <div style={{ textAlign: 'center', padding: '48px 20px', fontFamily: T.mono, fontSize: 13, color: T.muted2 }}>
                 No scan yet — hit <span style={{ color: T.accent }}>Find Best Stocks</span> to rank the market.
