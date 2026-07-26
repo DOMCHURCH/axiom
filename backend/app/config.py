@@ -100,12 +100,14 @@ class Settings(BaseSettings):
     universe_min_price: float = 3.0
     universe_min_avg_dollar_volume: float = 1_000_000.0
     universe_min_market_cap: float = 100_000_000.0
-    scan_technical_keep: int = 120
+    # Only the strongest technical candidates get (rate-limited) fundamentals —
+    # we surface a top-10, so enriching 40 is ample and keeps the stage short.
+    scan_technical_keep: int = 40
     # The funnel narrows to a short list of the day's best contenders.
     scan_top_n: int = 10
     # Wall-clock cap (seconds) for the rate-limited FMP enrichment stage; names
     # not enriched in time are scored technical-only so the scan always finishes.
-    scan_enrich_seconds: int = 75
+    scan_enrich_seconds: int = 45
 
     # -------------------------------------------------------------- helpers
     @staticmethod

@@ -44,15 +44,25 @@ def _gate(tech: dict, p: dict) -> bool:
     return True
 
 
-def _fmp_bundle(ticker: str) -> dict:
-    return {
-        "profile": fmp.profile(ticker),
-        "income": fmp.income_statement(ticker),
-        "balance": fmp.balance_sheet(ticker),
-        "cashflow": fmp.cash_flow(ticker),
-        "ratios": fmp.ratios(ticker),
-        "key_metrics": fmp.key_metrics(ticker),
-    }
+def _fmp_bundle(ticker: str, deadline: float | None = None) -> dict:
+    """Fetch one company's FMP statements, checking the stage deadline BEFORE each
+    call. Six sequential HTTP calls (each with its own retry budget) can otherwise
+    hang a single candidate for minutes, so the deadline is enforced per-call and
+    whatever was fetched so far is returned.
+    """
+    out: dict = {}
+    for key, fn in (
+        ("profile", fmp.profile),
+        ("income", fmp.income_statement),
+        ("cashflow", fmp.cash_flow),
+        ("ratios", fmp.ratios),
+        ("key_metrics", fmp.key_metrics),
+        ("balance", fmp.balance_sheet),
+    ):
+        if deadline is not None and time.time() >= deadline:
+            break
+        out[key] = fn(ticker)
+    return out
 
 
 def _resolve_params(params: dict | None) -> dict:
@@ -153,7 +163,7 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
 
         if fmp_enabled and not fmp_exhausted:
             try:
-                bundle = _fmp_bundle(ticker)
+                bundle = _fmp_bundle(ticker, enrich_deadline)
                 if bundle and any(bundle.values()):
                     fund = compute_fundamentals(bundle)
                     source = "fmp"
@@ -188,9 +198,9 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
         ranked.append({"ticker": ticker, "company_id": cid, "scores": scores,
                        "total": scores.get("total_score") or 0})
 
-        if i % 3 == 0 or i == total - 1:
-            mode = "technical-only" if fmp_exhausted else "fundamentals"
-            progress(60 + int(25 * (i + 1) / total), f"Scoring {i + 1}/{len(keep)} · {mode}")
+        # update every candidate so the UI never looks frozen mid-stage
+        mode = "technical-only" if fmp_exhausted else "fundamentals"
+        progress(60 + int(25 * (i + 1) / total), f"Scoring {i + 1}/{len(keep)} · {mode}")
 
     jobs.update_scan_run(scan_run_id, counts_merge={"enriched": len(ranked)})
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from app.config import settings
 from app.core.cache import _key, cache_get, cache_set
-from app.core.http import get_json
+from app.core.http import get_json_once
 from app.core.logging import get_logger
 from app.core.ratelimit import BudgetExhausted
 from app.data.limits import fmp_throttle
@@ -18,9 +18,13 @@ log = get_logger("fmp")
 
 BASE = "https://financialmodelingprep.com/api/v3"
 CACHE_TTL = 7 * 24 * 3600  # fundamentals change slowly
+# Keep scan-time calls snappy: the scanner enriches many names in sequence, so a
+# slow/blocked FMP must fail fast rather than burn the whole stage budget.
+REQUEST_TIMEOUT = 8.0
 
 
-def _get(path: str, params: dict | None = None, ttl: int = CACHE_TTL):
+def _get(path: str, params: dict | None = None, ttl: int = CACHE_TTL,
+         timeout: float = REQUEST_TIMEOUT):
     params = dict(params or {})
     key = _key("fmp", path, *[f"{k}={params[k]}" for k in sorted(params)])
     hit = cache_get(key)
@@ -30,7 +34,7 @@ def _get(path: str, params: dict | None = None, ttl: int = CACHE_TTL):
     fmp_throttle.acquire()  # raises BudgetExhausted when the 250/day cap is hit
     params["apikey"] = settings.fmp_api_key
     try:
-        data = get_json(f"{BASE}/{path}", params=params)
+        data = get_json_once(f"{BASE}/{path}", params=params, timeout=timeout)
     except BudgetExhausted:
         raise
     except Exception as exc:
