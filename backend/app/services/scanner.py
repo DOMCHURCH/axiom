@@ -102,6 +102,7 @@ def _resolve_params(params: dict | None) -> dict:
         "price_batch": params.get("price_batch", settings.scan_price_batch),
         "prefilter_keep": params.get("prefilter_keep", settings.scan_prefilter_keep),
         "deep_seconds": params.get("deep_seconds", settings.scan_deep_seconds),
+        "snapshot_seconds": params.get("snapshot_seconds", settings.scan_snapshot_seconds),
         "min_price": params.get("min_price", settings.universe_min_price),
         "min_dollar_vol": params.get("min_dollar_vol", settings.universe_min_avg_dollar_volume),
         "min_market_cap": params.get("min_market_cap", settings.universe_min_market_cap),
@@ -163,8 +164,9 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
         try:
             snapshot = market_snapshot.whole_market(
                 tickers,
+                budget=float(p["snapshot_seconds"]),
                 on_progress=lambda d, t: progress(6 + int(5 * d / max(1, t)),
-                                                  f"Snapshot {d}/{t} batches"),
+                                                  f"Snapshot {d}/{t} batches · {len(tickers)} names"),
             )
         except Exception as exc:  # noqa: BLE001 — never let this break a scan
             log.warning("market snapshot failed; scanning full universe", extra={"err": str(exc)})

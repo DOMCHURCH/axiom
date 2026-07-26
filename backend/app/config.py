@@ -125,6 +125,9 @@ class Settings(BaseSettings):
     scan_prefilter_keep: int = Field(default=900, alias="SCAN_PREFILTER_KEEP")
     # Wall-clock budget for the per-ticker history + technicals stage.
     scan_deep_seconds: int = Field(default=14, alias="SCAN_DEEP_SECONDS")
+    # Wall-clock budget for the whole-market snapshot. Partial coverage is fine:
+    # the snapshot only gates and pre-ranks, and exact technicals decide later.
+    scan_snapshot_seconds: int = Field(default=12, alias="SCAN_SNAPSHOT_SECONDS")
     # Daily bars are memoized for 4h so a RE-scan costs zero Yahoo requests, but
     # only when the candidate set is at most this many names — caching thousands
     # of DataFrames would hold hundreds of MB.

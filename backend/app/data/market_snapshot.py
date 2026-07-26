@@ -20,6 +20,7 @@ never a fabricated number.
 
 from __future__ import annotations
 
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from app.core.logging import get_logger
@@ -31,7 +32,10 @@ QUOTE_URL = "https://query2.finance.yahoo.com/v7/finance/quote"
 # Yahoo's quote endpoint accepts many symbols per call; keep well under any URL
 # length limit (150 x ~6 chars is ~1KB of query string).
 BATCH = 150
-WORKERS = 8
+# yfinance takes a cookie/crumb lock on EVERY request, so a handful of workers
+# spend most of their time queued behind it. More workers keeps the pipe full;
+# the lock itself only guards the (cached) crumb lookup, not the HTTP call.
+WORKERS = 20
 
 _FIELDS = (
     "symbol", "regularMarketPrice", "regularMarketVolume", "averageDailyVolume3Month",
@@ -117,22 +121,41 @@ def _fetch_chunk(symbols: list[str]) -> dict[str, dict]:
     return out
 
 
+def _warm_session() -> None:
+    """Fetch the cookie/crumb ONCE before fanning out.
+
+    Every request calls _get_cookie_and_crumb(), which takes a lock. Cold, the
+    whole pool piles up on that lock while one thread does the handshake; warming
+    it first means the workers start already-authenticated.
+    """
+    try:
+        from yfinance.data import YfData
+        YfData().get_raw_json(QUOTE_URL, params={"symbols": "AAPL"}, timeout=15)
+    except Exception as exc:  # noqa: BLE001
+        log.debug("session warm-up failed", extra={"err": str(exc)})
+
+
 def whole_market(tickers: list[str], *, batch: int = BATCH, workers: int = WORKERS,
-                 on_progress=None) -> dict[str, dict]:
+                 budget: float | None = None, on_progress=None) -> dict[str, dict]:
     """Snapshot every ticker. Returns {TICKER: {...}} — possibly partial, never raises.
 
-    `on_progress(done, total)` is called as chunks land so the scan can report
-    real movement.
+    `budget` caps the wall clock: whatever has landed by then is returned and the
+    rest is abandoned. Partial coverage is fine — the snapshot only has to gate
+    and pre-rank, and the exact technicals downstream stay authoritative.
     """
     if not tickers:
         return {}
     chunks = [tickers[i:i + batch] for i in range(0, len(tickers), batch)]
     snap: dict[str, dict] = {}
     done = 0
+    deadline = (time.monotonic() + budget) if budget else None
+    _warm_session()
     try:
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = [pool.submit(_fetch_chunk, c) for c in chunks]
-            for fut in as_completed(futures):
+        pool = ThreadPoolExecutor(max_workers=workers)
+        futures = [pool.submit(_fetch_chunk, c) for c in chunks]
+        try:
+            timeout = max(0.1, deadline - time.monotonic()) if deadline else None
+            for fut in as_completed(futures, timeout=timeout):
                 try:
                     snap.update(fut.result() or {})
                 except Exception as exc:  # noqa: BLE001
@@ -140,9 +163,16 @@ def whole_market(tickers: list[str], *, batch: int = BATCH, workers: int = WORKE
                 done += 1
                 if on_progress:
                     on_progress(done, len(chunks))
+        except TimeoutError:
+            log.info("snapshot budget spent — using partial coverage",
+                     extra={"chunks_done": done, "of": len(chunks), "rows": len(snap)})
+        finally:
+            for fut in futures:
+                fut.cancel()
+            pool.shutdown(wait=False)
     except Exception as exc:  # noqa: BLE001 — pool creation/shutdown
         log.warning("snapshot pool failed", extra={"err": str(exc)})
 
     log.info("market snapshot", extra={"requested": len(tickers), "got": len(snap),
-                                       "requests": len(chunks)})
+                                       "requests": len(chunks), "chunks_done": done})
     return snap
