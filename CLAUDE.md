@@ -87,14 +87,17 @@ uvicorn app.main:app --reload --port 8000
 cd frontend && npm install && npm run dev      # Vite proxies /api → :8000
 ```
 
-## Deploy (Railway — 3 services in one project)
-- **Postgres** — add the PostgreSQL database (pgvector enabled by migration 0001).
-- **Backend** — service with **root dir `backend`** (uses its Dockerfile). Start cmd
-  `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Set
-  `OPENROUTER_API_KEY` (required), `FMP_API_KEY`, `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
-- **Frontend** — service with **root dir `frontend`**, build `npm install && npm run build`,
-  start `npx serve -s dist -l $PORT`, var `VITE_API_URL=<backend URL>`.
-  (Or deploy `frontend/` to Vercel with the same `VITE_API_URL`.)
+## Deploy (Railway — simplest: 2 services)
+The **root `Dockerfile`** builds the frontend and serves it from the FastAPI
+backend, so the whole app is ONE web service + Postgres. No `VITE_API_URL`, no CORS.
+- **Postgres** — add the PostgreSQL database (pgvector optional; migration 0001
+  skips it gracefully if unavailable).
+- **App** — service from this repo, **root dir `/`** (repo root → root Dockerfile).
+  Set `OPENROUTER_API_KEY` (required), `FMP_API_KEY`, `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
+  Generate a domain (port 8080). Opening it serves the UI; the API is under `/api/v1`.
+
+Split option (frontend as its own service on Vercel or Railway, root dir `frontend`)
+still works — set `VITE_API_URL=<backend URL>` and deploy `backend/` separately.
 
 ## Git
 Branch: `main`
