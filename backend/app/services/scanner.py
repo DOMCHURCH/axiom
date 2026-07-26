@@ -13,6 +13,8 @@ Company Facts or cached data). Nothing refreshes all fundamentals in one day.
 from __future__ import annotations
 
 import time
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeout
 from datetime import date
 
 from sqlalchemy import select
@@ -51,21 +53,47 @@ def _gate(tech: dict, p: dict) -> bool:
 # what made the original daddiesmoney scanner feel instant on the second run.
 _PRICE_TTL = 4 * 3600
 
+# yfinance's download() can block far past its own timeout (internal retries, the
+# global multitasking thread pool, a throttling provider). A time budget checked
+# BETWEEN batches cannot help if one batch never returns — which is exactly how a
+# scan ends up frozen on "Deep-analysed 50". So every fetch runs on a worker we
+# can walk away from: if it overruns, we abandon it and carry on. The orphaned
+# thread finishes into the void; the scan does not wait for it.
+_FETCH_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="scan-fetch")
 
-def _cached_batch(batch: list[str], period: str, use_cache: bool) -> tuple[dict, bool]:
+
+def _call_bounded(fn, timeout: float, default, what: str):
+    fut = _FETCH_POOL.submit(fn)
+    try:
+        return fut.result(timeout=timeout)
+    except FuturesTimeout:
+        fut.cancel()
+        log.warning("fetch exceeded its budget — abandoning it",
+                    extra={"what": what, "timeout": timeout})
+        return default
+    except Exception as exc:  # noqa: BLE001
+        log.warning("fetch failed", extra={"what": what, "err": str(exc)})
+        return default
+
+
+def _cached_batch(batch: list[str], period: str, use_cache: bool,
+                  timeout: float = 25.0) -> tuple[dict, bool]:
     """Fetch one chunk of daily bars. Returns (frames, came_from_cache).
 
     Caching is deliberately bounded: a few hundred frames is a few MB and makes a
     re-scan instant, but memoizing thousands would hold hundreds of MB and risk
     an OOM on a small container — the exact problem streaming was added to solve.
     """
+    def _download():
+        return yahoo.download_batch(batch, period=period)
+
     if not use_cache:
-        return yahoo.download_batch(batch, period=period), False
+        return _call_bounded(_download, timeout, {}, f"bars[{len(batch)}]"), False
     key = _key("bars", period, ",".join(batch))
     hit = cache_get(key)
     if hit is not None:
         return hit, True
-    frames = yahoo.download_batch(batch, period=period)
+    frames = _call_bounded(_download, timeout, {}, f"bars[{len(batch)}]")
     if frames:
         cache_set(key, frames, _PRICE_TTL)
     return frames, False
@@ -225,7 +253,10 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
         batch = tickers[i:i + batch_size]
         cached = False
         try:
-            frames, cached = _cached_batch(batch, p["price_period"], cache_bars)
+            # never let one batch outlive the stage's remaining budget
+            left = max(5.0, deep_deadline - time.time())
+            frames, cached = _cached_batch(batch, p["price_period"], cache_bars,
+                                           timeout=min(25.0, left))
         except Exception as exc:  # a bad batch must not kill the scan
             log.warning("price batch failed", extra={"start": i, "err": str(exc)})
             frames = {}
@@ -267,12 +298,10 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
     # persisted for the detail-page chart (a single small batched call).
     if keep:
         progress(56, f"Loading price history for {len(keep)} finalists")
-        try:
-            keep_frames = yahoo.fetch_prices_bulk([c["ticker"] for c in keep],
-                                                  period=p["price_period"])
-        except Exception as exc:  # noqa: BLE001
-            log.warning("finalist price refetch failed", extra={"err": str(exc)})
-            keep_frames = {}
+        keep_frames = _call_bounded(
+            lambda: yahoo.fetch_prices_bulk([c["ticker"] for c in keep],
+                                            period=p["price_period"]),
+            timeout=30.0, default={}, what="finalist-bars")
         for cand in keep:
             cand["df"] = keep_frames.get(cand["ticker"])
 
