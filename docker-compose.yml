@@ -1,0 +1,37 @@
+# Local development infrastructure: Postgres (with pgvector).
+# The app (backend/frontend) runs on the host for fast reloads,
+# or uncomment the backend block to run it in a container.
+#
+#   docker compose up -d           # start postgres
+#   docker compose down            # stop
+#   docker compose down -v         # stop + wipe data
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: dm_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: daddiesmoney
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d daddiesmoney"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---- Optional: run the backend in-container instead of on the host ----
+  # backend:
+  #   build: ./backend
+  #   env_file: .env
+  #   depends_on: [postgres]
+  #   ports: ["8000:8000"]
+  #   command: bash scripts/start_api.sh
+
+volumes:
+  postgres-data:

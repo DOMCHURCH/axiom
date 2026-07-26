@@ -1,0 +1,38 @@
+# ---- web / api ----
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+gunicorn==23.0.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+python-multipart==0.0.20
+
+# ---- db ----
+SQLAlchemy==2.0.36
+alembic==1.14.0
+asyncpg==0.30.0            # async driver for FastAPI
+psycopg[binary]==3.2.3    # sync driver for worker + alembic
+pgvector==0.3.6
+greenlet==3.1.1
+
+# ---- http / resilience ----
+httpx==0.28.1
+tenacity==9.0.0
+
+# ---- market & fundamental data ----
+# yfinance 1.5.x bundles curl_cffi for browser impersonation, which is REQUIRED
+# to fetch from datacenter IPs (Railway) without Yahoo blocking/rate-limiting.
+yfinance==1.5.1
+curl_cffi==0.15.0
+pandas==3.0.5
+numpy==2.4.6
+python-dateutil==2.9.0.post0
+
+# ---- SEC filing parsing ----
+beautifulsoup4==4.12.3
+lxml==5.3.0
+
+# ---- embeddings (ONNX, no torch -> lean image) ----
+fastembed==0.5.1
+
+# ---- misc ----
+orjson==3.10.13
