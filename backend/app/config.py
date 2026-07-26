@@ -71,7 +71,7 @@ class Settings(BaseSettings):
     polygon_api_key: str = Field(default="", alias="POLYGON_API_KEY")
     polygon_per_min: int = 5
     polygon_per_day: int = 7200
-    sec_user_agent: str = Field(default="AXIOM Research contact@example.com", alias="SEC_USER_AGENT")
+    sec_user_agent: str = Field(default="AXIOM Research 01dominique.c@gmail.com", alias="SEC_USER_AGENT")
     # FRED (St. Louis Fed) — free key, generous limits. Powers the macro/economic feed.
     fred_api_key: str = Field(default="", alias="FRED_API_KEY")
 
