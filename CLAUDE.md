@@ -49,16 +49,17 @@ axiom/
 │   │   ├── worker/           # in-process job runner
 │   │   ├── db/ · config.py · main.py
 │   ├── Dockerfile · requirements.txt · .env.example
-├── src/                     # React frontend
-│   ├── pages/
-│   │   ├── BestStocks.jsx    # home: Find Best Stocks → ranked list
-│   │   └── StockDetail.jsx   # chart + scorecard + fundamentals + AI note
-│   ├── components/           # PriceChart, ReportView, ui, Shell, charts
-│   ├── lib/api.js            # backend client + job polling + formatters
-│   └── lib/tokens.js         # design system
+├── frontend/                # React frontend (its own Railway/Vercel service)
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── BestStocks.jsx    # home: Find Best Stocks → ranked list
+│   │   │   └── StockDetail.jsx   # chart + scorecard + fundamentals + AI note
+│   │   ├── components/           # PriceChart, ReportView, ui, Shell, charts
+│   │   ├── lib/api.js            # backend client + job polling + formatters
+│   │   └── lib/tokens.js         # design system
+│   ├── index.html · vite.config.js · vercel.json · package.json
 ├── docs/                    # ARCHITECTURE / API / DATABASE / DEPLOYMENT
-├── docker-compose.yml       # local Postgres (pgvector)
-└── vercel.json · vite.config.js · package.json
+└── docker-compose.yml       # local Postgres (pgvector)
 ```
 
 ## Key API endpoints (base `/api/v1`)
@@ -82,16 +83,18 @@ pip install -r requirements.txt
 cp .env.example .env                          # set OPENROUTER_API_KEY + FMP_API_KEY
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
-# frontend (new terminal, repo root)
-npm install && npm run dev                    # Vite proxies /api → :8000
+# frontend (new terminal)
+cd frontend && npm install && npm run dev      # Vite proxies /api → :8000
 ```
 
-## Deploy
-- **Backend + Postgres → Railway.** Add a Postgres plugin, then a service with root
-  dir `backend/` (uses its Dockerfile). Set `OPENROUTER_API_KEY`, `FMP_API_KEY`,
-  `SEC_USER_AGENT`; `DATABASE_URL` is injected. Run `alembic upgrade head` once.
-- **Frontend → Vercel.** Set `VITE_API_URL` to the Railway backend URL. `vercel.json`
-  handles SPA routing.
+## Deploy (Railway — 3 services in one project)
+- **Postgres** — add the PostgreSQL database (pgvector enabled by migration 0001).
+- **Backend** — service with **root dir `backend`** (uses its Dockerfile). Start cmd
+  `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Set
+  `OPENROUTER_API_KEY` (required), `FMP_API_KEY`, `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
+- **Frontend** — service with **root dir `frontend`**, build `npm install && npm run build`,
+  start `npx serve -s dist -l $PORT`, var `VITE_API_URL=<backend URL>`.
+  (Or deploy `frontend/` to Vercel with the same `VITE_API_URL`.)
 
 ## Git
 Branch: `main`

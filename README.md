@@ -28,17 +28,21 @@ cp .env.example .env            # set OPENROUTER_API_KEY (required) + FMP_API_KE
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 
-# 3. Frontend (repo root, new terminal)
+# 3. Frontend (new terminal)
+cd frontend
 npm install
 npm run dev                     # http://localhost:5173  (proxies /api → :8000)
 ```
 Open the app and hit **Find Best Stocks**.
 
-## Deploy
-- **Backend + Postgres → Railway** — add a Postgres plugin and a service with root
-  dir `backend/` (uses its Dockerfile). Set `OPENROUTER_API_KEY`, `FMP_API_KEY`,
-  `SEC_USER_AGENT`. `DATABASE_URL` is injected. Run `alembic upgrade head` once.
-- **Frontend → Vercel** — set `VITE_API_URL` to the Railway backend URL.
+## Deploy (Railway — one project, 3 services)
+- **Postgres** — add the PostgreSQL database (pgvector is enabled by the first migration).
+- **Backend** — service with root dir **`backend`** (its Dockerfile). Start command:
+  `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Set
+  `OPENROUTER_API_KEY`, `FMP_API_KEY`, `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
+- **Frontend** — service with root dir **`frontend`**, build `npm install && npm run build`,
+  start `npx serve -s dist -l $PORT`, and `VITE_API_URL=<backend URL>`.
+  (Or deploy `frontend/` to Vercel with the same `VITE_API_URL`.)
 
 ## Configuration
 The only key you *need* is `OPENROUTER_API_KEY`. `FMP_API_KEY` unlocks richer
