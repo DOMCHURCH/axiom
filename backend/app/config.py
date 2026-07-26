@@ -122,6 +122,10 @@ class Settings(BaseSettings):
     scan_prefilter_keep: int = Field(default=2500, alias="SCAN_PREFILTER_KEEP")
     # Wall-clock budget for the per-ticker history + technicals stage.
     scan_deep_seconds: int = Field(default=14, alias="SCAN_DEEP_SECONDS")
+    # Daily bars are memoized for 4h so a RE-scan costs zero Yahoo requests, but
+    # only when the candidate set is at most this many names — caching thousands
+    # of DataFrames would hold hundreds of MB.
+    scan_cache_max: int = Field(default=900, alias="SCAN_CACHE_MAX")
     # Only the strongest technical candidates get (rate-limited) fundamentals.
     # 6 FMP calls each against a 250/day free tier means ~20 names is also the
     # most we can afford per scan without burning the daily budget in one run.

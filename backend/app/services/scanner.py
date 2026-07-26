@@ -18,6 +18,7 @@ from datetime import date
 from sqlalchemy import select
 
 from app.config import settings
+from app.core.cache import _key, cache_get, cache_set
 from app.core.logging import get_logger
 from app.core.ratelimit import BudgetExhausted
 from app.data import fmp, market_snapshot, sec, yahoo
@@ -43,6 +44,31 @@ def _gate(tech: dict, p: dict) -> bool:
     if adv is None or adv < p["min_dollar_vol"]:
         return False
     return True
+
+
+# Daily bars change once a day, so a re-scan inside this window costs ZERO Yahoo
+# requests. This is the single reason a repeat scan can finish in seconds — it is
+# what made the original daddiesmoney scanner feel instant on the second run.
+_PRICE_TTL = 4 * 3600
+
+
+def _cached_batch(batch: list[str], period: str, use_cache: bool) -> tuple[dict, bool]:
+    """Fetch one chunk of daily bars. Returns (frames, came_from_cache).
+
+    Caching is deliberately bounded: a few hundred frames is a few MB and makes a
+    re-scan instant, but memoizing thousands would hold hundreds of MB and risk
+    an OOM on a small container — the exact problem streaming was added to solve.
+    """
+    if not use_cache:
+        return yahoo.download_batch(batch, period=period), False
+    key = _key("bars", period, ",".join(batch))
+    hit = cache_get(key)
+    if hit is not None:
+        return hit, True
+    frames = yahoo.download_batch(batch, period=period)
+    if frames:
+        cache_set(key, frames, _PRICE_TTL)
+    return frames, False
 
 
 def _fmp_bundle(ticker: str, deadline: float | None = None) -> dict:
@@ -187,14 +213,17 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
     priced = 0
     deep_done = 0
     batch_size = int(p["price_batch"])
+    # Only memoize bars for a modest candidate set (see _cached_batch).
+    cache_bars = len(tickers) <= settings.scan_cache_max
     for i in range(0, len(tickers), batch_size):
         if i and time.time() >= deep_deadline:
             log.info("deep stage budget spent",
                      extra={"processed": i, "of": len(tickers), "priced": priced})
             break
         batch = tickers[i:i + batch_size]
+        cached = False
         try:
-            frames = yahoo.download_batch(batch, period=p["price_period"])
+            frames, cached = _cached_batch(batch, p["price_period"], cache_bars)
         except Exception as exc:  # a bad batch must not kill the scan
             log.warning("price batch failed", extra={"start": i, "err": str(exc)})
             frames = {}
@@ -211,7 +240,8 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
                 continue
             # note: no DataFrame retained — prices for the finalists are re-fetched
             survivors.append({"ticker": t, "company_id": cid, "cik": cmap[t][1], "tech": tech})
-        frames.clear()
+        if not cached:
+            frames.clear()          # free the frames — unless they're the cache's
         done = min(i + batch_size, len(tickers))
         deep_done = done
         # Progress is scaled against what the time budget can realistically reach,
