@@ -100,6 +100,30 @@ async def fundamentals(ticker: str, db: AsyncSession = Depends(get_db)) -> dict:
         "valuation_metrics": f.valuation_metrics} for f in rows]}
 
 
+@router.get("/{ticker}/valuation")
+async def valuation(ticker: str, db: AsyncSession = Depends(get_db)) -> dict:
+    """Intrinsic value: two-stage DCF + seeded Monte Carlo + football-field ranges.
+
+    All math is Python (app.quant.valuation). Returns a payload with null fields
+    rather than an error when there is no fundamental data for the ticker yet.
+    """
+    from app.quant.valuation import build_valuation
+    from app.services.report import _fundamentals_from_row, _technicals_from_row
+
+    c = await _company(db, ticker)
+    fin = await db.scalar(select(FinancialData).where(FinancialData.company_id == c.id)
+                          .order_by(desc(FinancialData.fiscal_date)))
+    t = await db.scalar(select(TechnicalMetric).where(TechnicalMetric.company_id == c.id)
+                        .order_by(desc(TechnicalMetric.as_of)))
+
+    fund = dict(_fundamentals_from_row(fin))
+    if fund.get("market_cap") is None and c.market_cap is not None:
+        fund["market_cap"] = _n(c.market_cap)   # market cap lives on companies
+    tech = _technicals_from_row(t)
+    return {"ticker": c.ticker,
+            "valuation": build_valuation(fund, tech, price=tech.get("last_price"))}
+
+
 @router.get("/{ticker}/filings")
 async def filings(ticker: str, db: AsyncSession = Depends(get_db)) -> dict:
     c = await _company(db, ticker)

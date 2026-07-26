@@ -8,6 +8,7 @@ invent figures. Output is strict JSON mapped onto the ai_reports fields.
 from __future__ import annotations
 
 import json
+import math
 
 import orjson
 
@@ -30,6 +31,14 @@ scores and metrics — interpret them.
 - Give a genuinely balanced bull AND bear case. Do not be a cheerleader.
 - Your recommendation must be one of exactly: Strong Buy, Buy, Hold, Watch, Avoid.
 - confidence is an integer 0-100 reflecting how strong and consistent the evidence is.
+- The VALUATION block (when present) is a Python-computed DCF and Monte Carlo run. \
+Interpret it — the intrinsic value, the upside/downside vs the current price, how \
+wide the P10-P90 distribution is, how dependent it is on the terminal value, and \
+whether the stated assumptions (growth, WACC, beta) look demanding or conservative.
+- price_target must be a single number in dollars per share drawn from the provided \
+valuation ranges (e.g. near the DCF median or a blended midpoint), or null. If no \
+VALUATION block is provided, price_target MUST be null and valuation_analysis must \
+say that no intrinsic-value estimate was available. Never invent a target.
 
 Return ONLY a JSON object with these keys (no prose outside JSON):
 {
@@ -41,6 +50,8 @@ Return ONLY a JSON object with these keys (no prose outside JSON):
   "risks": [{"title": string, "detail": string, "severity": "low"|"medium"|"high"}],
   "technical_analysis": string,
   "fundamental_analysis": string,
+  "valuation_analysis": string,
+  "price_target": number|null,
   "recommendation": "Strong Buy"|"Buy"|"Hold"|"Watch"|"Avoid",
   "confidence": integer
 }"""
@@ -57,6 +68,58 @@ def _fmt(v, pct: bool = False, money: bool = False) -> str:
         return f"{float(v):,.2f}"
     except (TypeError, ValueError):
         return str(v)
+
+
+def _num_or_none(v) -> float | None:
+    """Coerce a model-supplied number to a clean float, else None."""
+    if v is None or isinstance(v, bool):
+        return None
+    if isinstance(v, str):
+        v = v.strip().replace("$", "").replace(",", "")
+        if not v:
+            return None
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    return f if math.isfinite(f) else None
+
+
+def _valuation_block(val: dict | None) -> str:
+    """Render the Python-computed valuation for the prompt (empty when absent)."""
+    if not val:
+        return ""
+    a = val.get("assumptions") or {}
+    mc = val.get("monte_carlo") or {}
+    d = val.get("dcf") or {}
+    da = d.get("assumptions") or {}
+
+    ranges = " | ".join(
+        f"{r.get('label')} {_fmt(r.get('low'))}-{_fmt(r.get('high'))}"
+        for r in (val.get("ranges") or [])) or "(none computable)"
+    prob = mc.get("prob_above_price")
+    missing = ", ".join(val.get("missing") or []) or "none"
+
+    return f"""
+VALUATION (two-stage DCF computed in Python — interpret it, do not recompute):
+  Intrinsic value/share {_fmt(val.get('intrinsic_value'))} vs current price \
+{_fmt(val.get('price'))}  ->  upside {_fmt(val.get('upside'), pct=True)}
+  WACC {_fmt(val.get('wacc'), pct=True)} (beta {_fmt(a.get('beta'))} [{a.get('beta_source')}], \
+risk-free {_fmt(a.get('risk_free'), pct=True)}, ERP {_fmt(a.get('equity_risk_premium'), pct=True)}, \
+D/E {_fmt(a.get('debt_to_equity'))})
+  Stage-1 FCF growth {_fmt(a.get('growth'), pct=True)} (source: {a.get('growth_source')}) fading to \
+terminal {_fmt(a.get('terminal_growth'), pct=True)} over {a.get('years')} years
+  Base FCF {_fmt(a.get('fcf'), money=True)} | net debt {_fmt(a.get('net_debt'), money=True)} | \
+shares {_fmt(a.get('shares_outstanding'))}
+  Enterprise value {_fmt(d.get('enterprise_value'), money=True)} | equity value \
+{_fmt(d.get('equity_value'), money=True)} | terminal value is \
+{_fmt(da.get('terminal_pct_of_value'), pct=True)} of it
+  Monte Carlo ({mc.get('trials', 'n/a')} trials): P10 {_fmt(mc.get('p10'))} | median \
+{_fmt(mc.get('median'))} | P90 {_fmt(mc.get('p90'))} | P(intrinsic > price) \
+{_fmt(prob, pct=True)}
+  Valuation ranges ($/share): {ranges}
+  Missing/assumed inputs: {missing}
+"""
 
 
 def build_user_prompt(ctx: dict) -> str:
@@ -103,7 +166,7 @@ Net margin {_fmt(f.get('net_margin'), pct=True)}
 Debt/Equity {_fmt(f.get('debt_to_equity'))} | Current ratio {_fmt(f.get('current_ratio'))}
   Valuation: P/E {_fmt(val.get('pe'))} | P/S {_fmt(val.get('ps'))} | P/B {_fmt(val.get('pb'))} | \
 EV/EBITDA {_fmt(val.get('ev_ebitda'))} | PEG {_fmt(val.get('peg'))} | FCF yield {_fmt(val.get('fcf_yield'), pct=True)}
-
+{_valuation_block(ctx.get('valuation'))}
 NEWS SENTIMENT (GDELT): score {news.get('sentiment_score')} over {news.get('volume')} articles
 RECENT HEADLINES:
 {headlines}
@@ -157,6 +220,12 @@ def generate_report(ctx: dict, *, model: str | None = None,
     except (TypeError, ValueError):
         confidence = 50
 
+    # a price target is only allowed when Python actually computed a valuation
+    price_target = _num_or_none(parsed.get("price_target"))
+    if price_target is not None and (price_target <= 0
+                                     or not ((ctx.get("valuation") or {}).get("ranges"))):
+        price_target = None
+
     usage = result.get("usage") or {}
     return {
         "model": result.get("model"),
@@ -168,6 +237,8 @@ def generate_report(ctx: dict, *, model: str | None = None,
         "risks": parsed.get("risks") or [],
         "technical_analysis": parsed.get("technical_analysis"),
         "fundamental_analysis": parsed.get("fundamental_analysis"),
+        "valuation_analysis": parsed.get("valuation_analysis"),
+        "price_target": price_target,
         "recommendation": rec,
         "confidence": confidence,
         "tokens_used": usage.get("total_tokens"),

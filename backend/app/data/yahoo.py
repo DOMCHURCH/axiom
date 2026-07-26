@@ -82,9 +82,10 @@ def fetch_prices_bulk(tickers: list[str], period: str = "1y", interval: str = "1
         except Exception as exc:  # a bad batch shouldn't kill the whole scan
             log.warning("yahoo batch failed", extra={"start": i, "size": len(batch), "err": str(exc)})
         # single-threaded retry for anything the batch missed (capped so a broad
-        # block/outage can never turn into a multi-minute retry storm)
+        # block/outage can never turn into a multi-minute retry storm — with a
+        # ~1.5k-name universe even a small per-batch cap adds up, so keep it tight)
         missing = [t for t in batch if result.get(t) is None or result[t].empty]
-        for t in missing[:40]:
+        for t in missing[:8]:
             try:
                 df = fetch_ohlcv(t, period, interval)
                 if df is not None and not df.empty:

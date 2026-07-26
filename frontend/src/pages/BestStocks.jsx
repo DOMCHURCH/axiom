@@ -11,6 +11,9 @@ import {
   REC_COLOR, fmtNum, latestResults, marketOverview, pollJob, runScan, scanResults, scoreColor,
 } from '../lib/api.js'
 
+// The funnel narrows a ~1.5k-name liquid universe down to this many contenders.
+const TOP_N = 10
+
 const FACTORS = ['technical', 'fundamental', 'growth', 'value', 'quality', 'risk']
 const FACTOR_LABEL = { technical: 'TECH', fundamental: 'FUND', growth: 'GROW', value: 'VAL', quality: 'QUAL', risk: 'RISK' }
 const REC_ORDER = ['Strong Buy', 'Buy', 'Hold', 'Watch', 'Avoid']
@@ -159,7 +162,7 @@ export default function BestStocks() {
 
   useEffect(() => {
     Promise.all([
-      latestResults({ limit: 100 }).catch(() => ({ results: [] })),
+      latestResults({ limit: TOP_N }).catch(() => ({ results: [] })),
       marketOverview().catch(() => null),
     ]).then(([latest, ov]) => { setResults(latest?.results || []); setOverview(ov); setLoaded(true) })
   }, [])
@@ -170,7 +173,7 @@ export default function BestStocks() {
     try {
       const { job_id, scan_run_id } = await runScan({})
       await pollJob(job_id, { onProgress: (j) => setProgress({ pct: j.progress ?? 0, stage: j.stage || j.status }) })
-      const res = await scanResults(scan_run_id, { limit: 100 })
+      const res = await scanResults(scan_run_id, { limit: TOP_N })
       setResults(res.results || []); setAsOf(new Date())
       marketOverview().then(setOverview).catch(() => {})
     } catch (e) {
@@ -181,7 +184,7 @@ export default function BestStocks() {
   }
 
   function refreshLatest() {
-    latestResults({ limit: 100 }).then((d) => setResults(d?.results || [])).catch(() => {})
+    latestResults({ limit: TOP_N }).then((d) => setResults(d?.results || [])).catch(() => {})
   }
 
   // ── derived ──
@@ -197,7 +200,11 @@ export default function BestStocks() {
     return [k, vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null]
   }))
   const scoreCurve = ranked.map((r) => r.total_score)
-  const universe = overview?.active ?? overview?.companies ?? null
+  // Funnel counts from the most recent scan run: scanned -> liquidity survivors -> top N
+  const counts = overview?.last_scan?.counts || {}
+  const scanned = counts.universe ?? null
+  const survivors = counts.survivors ?? null
+  const universe = scanned ?? overview?.active ?? overview?.companies ?? null
   const reports = overview?.reports ?? null
   const sentiment = overview?.avg_sentiment
   const lastScan = overview?.last_scan?.status ?? null
@@ -227,8 +234,12 @@ export default function BestStocks() {
               <h1 style={{ fontFamily: T.sans, fontSize: 'clamp(20px,3vw,28px)', fontWeight: 800, letterSpacing: '-0.02em',
                 color: T.text, lineHeight: 1.1, margin: 0 }}>Best stocks of the day</h1>
               <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2, marginTop: 6 }}>
-                Ranked {n} · {universe ?? '—'} in universe
-                {asOf ? ` · scanned ${asOf.toLocaleTimeString()}` : lastScan ? ` · ${lastScan}` : ''}
+                {scanned != null
+                  ? <>Scanned <span style={{ color: T.text }}>{fmtNum(scanned, 0)}</span>
+                      {survivors != null && <> · <span style={{ color: T.text }}>{fmtNum(survivors, 0)}</span> liquid</>}
+                      {' · '}top <span style={{ color: T.accent }}>{n || TOP_N}</span></>
+                  : <>Ranks a ~1,460-name liquid universe down to the top {TOP_N}</>}
+                {asOf ? ` · ${asOf.toLocaleTimeString()}` : lastScan ? ` · ${lastScan}` : ''}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -278,8 +289,13 @@ export default function BestStocks() {
               <Pill color={T.green}>{buyPlus} buy-rated</Pill>
               <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted2 }}>of {n}</span>
             </div>} />
-          <KpiTile label="Universe" value={universe != null ? fmtNum(universe, 0) : '—'}
-            sub={<span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2 }}>liquid US equities</span>} />
+          <KpiTile label="Scanned" value={universe != null ? fmtNum(universe, 0) : '—'}
+            sub={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {survivors != null
+                ? <><Pill color={T.accent}>{fmtNum(survivors, 0)} liquid</Pill>
+                    <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted2 }}>→ top {n || TOP_N}</span></>
+                : <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2 }}>liquid US equities</span>}
+            </div>} />
           <KpiTile label="Sentiment" value={sentiment != null ? (sentiment > 0 ? '+' : '') + sentiment.toFixed(2) : '—'} valueColor={sentColor}
             sub={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Pill color={sentColor}>{sentLabel}</Pill>
@@ -295,7 +311,7 @@ export default function BestStocks() {
             <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.border}`, display: 'flex',
               alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                <span style={panelHead}>Ranked Results</span>
+                <span style={panelHead}>Top Contenders</span>
                 <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2 }}>· {n}</span>
                 {scanning && <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent }}>{progress.stage}</span>}
               </div>

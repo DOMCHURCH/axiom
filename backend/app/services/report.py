@@ -75,6 +75,12 @@ def assemble_context(session: Session, company: Company) -> dict:
         .order_by(desc(NewsArticle.published_at)).limit(8)).scalars().all()
 
     tdict = _technicals_from_row(tech)
+    fdict = _fundamentals_from_row(fin)
+    if fdict.get("market_cap") is None and company.market_cap is not None:
+        fdict["market_cap"] = _num(company.market_cap)   # market cap lives on companies
+
+    # intrinsic value (DCF + Monte Carlo + ranges) — deterministic, Python-only
+    valuation = build_valuation(fdict, tdict, price=tdict.get("last_price"))
 
     # news: DB first, else a live GDELT tone lookup
     if news_rows:
