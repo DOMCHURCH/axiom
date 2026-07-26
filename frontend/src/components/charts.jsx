@@ -121,8 +121,9 @@ export function FootballField({ methods, current, target }) {
           const y = i * rowH + rowH / 2
           return (
             <div key={i}>
-              <div style={{ position: 'absolute', left: 0, top: y - 16, width: labelW,
-                fontFamily: C.mono, fontSize: 11, color: hover === i ? '#e8eef7' : '#9ca3af', transition: 'color 0.12s' }}>
+              <div title={m.label} style={{ position: 'absolute', left: 0, top: y - 16, width: labelW,
+                fontFamily: C.mono, fontSize: 11, color: hover === i ? '#e8eef7' : '#9ca3af', transition: 'color 0.12s',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {m.label}
               </div>
               <div className="tnum" style={{ position: 'absolute', left: 0, top: y + 1, width: labelW,

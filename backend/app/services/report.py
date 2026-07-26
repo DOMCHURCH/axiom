@@ -10,6 +10,7 @@ from app.core.logging import get_logger
 from app.data import gdelt
 from app.db.models import AiReport, Company, FinancialData, NewsArticle, StockScore, TechnicalMetric
 from app.db.session import session_scope
+from app.quant.valuation import build_valuation
 from app.services import filings
 
 log = get_logger("report_service")
@@ -106,7 +107,7 @@ def assemble_context(session: Session, company: Company) -> dict:
         "ticker": company.ticker, "name": company.name, "sector": company.sector,
         "industry": company.industry, "market_cap": _num(company.market_cap),
         "scores": _scores_from_row(sc), "technicals": tdict,
-        "fundamentals": _fundamentals_from_row(fin), "news": news,
+        "fundamentals": fdict, "valuation": valuation, "news": news,
         "filings": excerpts, "market": {},
     }
 
@@ -134,6 +135,8 @@ def generate_and_store(company_id: int, *, ensure_filings: bool = True,
             catalysts=rep["catalysts"], risks=rep["risks"],
             technical_analysis=rep["technical_analysis"],
             fundamental_analysis=rep["fundamental_analysis"],
+            valuation_analysis=rep.get("valuation_analysis"),
+            price_target=rep.get("price_target"),
             recommendation=rep["recommendation"], confidence=rep["confidence"],
             scores_snapshot=rep["scores_snapshot"], tokens_used=rep["tokens_used"],
         )

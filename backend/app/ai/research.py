@@ -89,6 +89,8 @@ def _valuation_block(val: dict | None) -> str:
     """Render the Python-computed valuation for the prompt (empty when absent)."""
     if not val:
         return ""
+    if val.get("intrinsic_value") is None and not (val.get("ranges") or []):
+        return ""   # nothing was computable — show no block rather than all-n/a
     a = val.get("assumptions") or {}
     mc = val.get("monte_carlo") or {}
     d = val.get("dcf") or {}

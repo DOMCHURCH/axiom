@@ -36,6 +36,18 @@ candidates consume the rate-limited fundamental APIs. See `docs/ARCHITECTURE.md`
 Six 0–100 sub-scores + a weighted composite → recommendation
 (`Strong Buy / Buy / Hold / Watch / Avoid`). Risk is inverted (higher = safer).
 
+## Valuation (deterministic, in Python — `backend/app/quant/valuation.py`)
+CAPM WACC → 2-stage FCF DCF → 4,000-run Monte Carlo (fixed seed, reproducible) →
+"football field" ranges (DCF P10–P90, P/E, EV/EBITDA, P/S, FCF yield, 52-week).
+Served by `GET /companies/{ticker}/valuation`; the AI only *interprets* these
+numbers (`valuation_analysis`, `price_target` — a target it may draw only from the
+provided ranges). Missing inputs are reported in `missing`, never fabricated.
+
+## Frontend background
+`DitherBackground.jsx` — Bayer8 ordered dithering over animated fbm noise in a
+single raw-WebGL pass (no library). Click anywhere for a ripple. The dashboard
+floats inset over it as one frosty-white glass frame.
+
 ## File structure
 ```
 axiom/

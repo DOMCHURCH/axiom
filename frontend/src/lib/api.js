@@ -41,6 +41,7 @@ export const prices = (t, range = '1Y') => req(`/companies/${t}/prices?range=${r
 export const technicals = (t) => req(`/companies/${t}/technicals`)
 export const fundamentals = (t) => req(`/companies/${t}/fundamentals`)
 export const news = (t, limit = 12) => req(`/companies/${t}/news?limit=${limit}`)
+export const valuation = (t) => req(`/companies/${t}/valuation`)
 export const getReport = (t) => req(`/companies/${t}/report`)
 export const makeReport = (t) => req(`/companies/${t}/report`, { method: 'POST' })
 

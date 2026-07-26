@@ -6,12 +6,23 @@ import Shell from '../components/Shell.jsx'
 import PriceChart from '../components/PriceChart.jsx'
 import ReportView from '../components/ReportView.jsx'
 import { FactorGrid, RecBadge, ScoreRing, Section, StatTile } from '../components/ui.jsx'
-import { ScoreGauge, Sparkline } from '../components/charts.jsx'
+import { FootballField, Histogram, ScoreGauge, Sparkline } from '../components/charts.jsx'
 import { glass, glassInner, palette as T } from '../lib/tokens.js'
 import {
   company, fmtMoney, fmtNum, fmtPct, fundamentals, getReport, makeReport,
-  pollJob, prices, scoreColor, technicals,
+  pollJob, prices, scoreColor, technicals, valuation as fetchValuation,
 } from '../lib/api.js'
+
+// Football-field row colors: amber for the DCF, cool tones for multiples.
+const METHOD_COLOR = {
+  dcf_mc: '#f5a524', dcf: '#f5a524', pe: '#7dd3fc', ev_ebitda: '#a5b4fc',
+  ps: '#93c5fd', fcf_yield: '#86efac', range_52w: '#94a3b8',
+}
+// Compact labels so the football-field label column never wraps.
+const METHOD_LABEL = {
+  dcf_mc: 'DCF · P10–P90', dcf: 'DCF', pe: 'P/E multiple', ev_ebitda: 'EV/EBITDA',
+  ps: 'P/S multiple', fcf_yield: 'FCF yield', range_52w: '52-week range',
+}
 
 const RANGES = ['1M', '3M', '6M', '1Y', '5Y']
 
@@ -37,6 +48,7 @@ export default function StockDetail() {
   const [funds, setFunds] = useState(null)
   const [tech, setTech] = useState(null)
   const [report, setReport] = useState(null)
+  const [vd, setVd] = useState(null)         // valuation payload (DCF / MC / ranges)
   const [loadErr, setLoadErr] = useState('')
   const [genState, setGenState] = useState({ running: false, stage: '', error: '' })
 
@@ -47,6 +59,7 @@ export default function StockDetail() {
     fundamentals(ticker).then((d) => alive && setFunds(d)).catch(() => {})
     technicals(ticker).then((d) => alive && setTech(d)).catch(() => {})
     getReport(ticker).then((d) => alive && setReport(d?.report || null)).catch(() => {})
+    fetchValuation(ticker).then((d) => alive && setVd(d?.valuation || null)).catch(() => {})
     return () => { alive = false }
   }, [ticker])
 
@@ -222,6 +235,63 @@ export default function StockDetail() {
             <div style={{ fontFamily: T.mono, fontSize: 12, color: T.muted2 }}>No fundamentals ingested yet.</div>
           )}
         </Section>
+
+        {/* R5.5 · Valuation — DCF intrinsic value, Monte Carlo, football field */}
+        {vd && (vd.intrinsic_value != null || (vd.ranges || []).length > 0) && (
+          <Section title="Valuation" right={
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {vd.wacc != null && <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted2 }}>WACC {fmtPct(vd.wacc)}</span>}
+              <span style={{ fontFamily: T.mono, fontSize: 9, color: T.muted, letterSpacing: 1 }}>PYTHON · NOT AI</span>
+            </div>
+          }>
+            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(150px,1fr))', marginBottom: 20 }}>
+              <StatTile label="Intrinsic value" value={vd.intrinsic_value != null ? `$${fmtNum(vd.intrinsic_value, 2)}` : '—'}
+                sub="2-stage FCF DCF" color={T.accent} />
+              <StatTile label="Upside" value={vd.upside != null ? `${vd.upside >= 0 ? '+' : ''}${fmtPct(vd.upside)}` : '—'}
+                color={vd.upside == null ? T.text : vd.upside >= 0 ? T.green : T.red}
+                sub={vd.price != null ? `vs $${fmtNum(vd.price, 2)}` : null} />
+              {vd.monte_carlo && <StatTile label="MC median" value={`$${fmtNum(vd.monte_carlo.median, 2)}`}
+                sub={`P10 $${fmtNum(vd.monte_carlo.p10, 0)} · P90 $${fmtNum(vd.monte_carlo.p90, 0)}`} />}
+              {vd.monte_carlo?.prob_above_price != null && (
+                <StatTile label="P(above price)" value={fmtPct(vd.monte_carlo.prob_above_price, 0)}
+                  color={vd.monte_carlo.prob_above_price >= 0.5 ? T.green : T.red}
+                  sub={`${fmtNum(vd.monte_carlo.trials, 0)} sims`} />
+              )}
+              {vd.assumptions?.growth != null && <StatTile label="FCF growth" value={fmtPct(vd.assumptions.growth)}
+                sub={`fade → ${fmtPct(vd.assumptions.terminal_growth)}`} />}
+            </div>
+
+            {(vd.ranges || []).length > 0 && (
+              <div style={{ marginBottom: 22 }}>
+                <div style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted2, letterSpacing: 1, marginBottom: 12 }}>
+                  VALUATION RANGE BY METHOD
+                </div>
+                <FootballField
+                  methods={vd.ranges.map((r) => ({ ...r, label: METHOD_LABEL[r.method] || r.label,
+                    color: METHOD_COLOR[r.method] || T.accent }))}
+                  current={vd.price}
+                  target={vd.intrinsic_value ?? undefined}
+                />
+              </div>
+            )}
+
+            {vd.monte_carlo?.histogram?.length > 0 && (
+              <div>
+                <div style={{ fontFamily: T.mono, fontSize: 9.5, color: T.muted2, letterSpacing: 1, marginBottom: 12 }}>
+                  MONTE CARLO · {fmtNum(vd.monte_carlo.trials, 0)} SIMULATED DCFs
+                </div>
+                <Histogram histogram={vd.monte_carlo.histogram} current={vd.price}
+                  median={vd.monte_carlo.median} p10={vd.monte_carlo.p10} p90={vd.monte_carlo.p90} />
+              </div>
+            )}
+
+            {(vd.missing || []).length > 0 && (
+              <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, marginTop: 16 }}>
+                Not modelled: {vd.missing.join(' · ')}
+              </div>
+            )}
+          </Section>
+        )}
 
         {/* R6 · AI research note */}
         <div>

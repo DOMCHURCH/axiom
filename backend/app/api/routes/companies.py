@@ -209,6 +209,7 @@ def _report(r: AiReport) -> dict:
         "thesis": r.thesis, "bull_case": r.bull_case, "bear_case": r.bear_case,
         "catalysts": r.catalysts, "risks": r.risks,
         "technical_analysis": r.technical_analysis, "fundamental_analysis": r.fundamental_analysis,
+        "valuation_analysis": r.valuation_analysis, "price_target": _n(r.price_target),
         "recommendation": r.recommendation, "confidence": r.confidence,
         "scores_snapshot": r.scores_snapshot, "created_at": r.created_at,
     }

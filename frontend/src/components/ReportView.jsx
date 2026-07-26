@@ -38,6 +38,14 @@ export default function ReportView({ report }) {
             <span className="tnum" style={{ fontFamily: C.mono, fontSize: 12, color: '#e8eef7', fontWeight: 700 }}>{conf}/100</span>
           </div>
         )}
+        {report.price_target != null && (
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+            <span style={{ fontFamily: C.mono, fontSize: 10, color: C.muted2, textTransform: 'uppercase', letterSpacing: 1 }}>Target</span>
+            <span className="tnum" style={{ fontFamily: C.mono, fontSize: 16, fontWeight: 700, color: C.accent }}>
+              ${Number(report.price_target).toFixed(2)}
+            </span>
+          </div>
+        )}
         {report.model && (
           <span style={{ fontFamily: C.mono, fontSize: 9.5, color: C.muted, marginLeft: 'auto' }}>{report.model}</span>
         )}
@@ -112,6 +120,9 @@ export default function ReportView({ report }) {
       )}
 
       {/* Technical + Fundamental analysis */}
+      {report.valuation_analysis && (
+        <Section title="Valuation Analysis"><Prose text={report.valuation_analysis} /></Section>
+      )}
       {report.technical_analysis && (
         <Section title="Technical Analysis"><Prose text={report.technical_analysis} /></Section>
       )}

@@ -223,6 +223,10 @@ class AiReport(PKMixin, TimestampMixin, Base):
     risks: Mapped[list | None] = mapped_column(JSONB)
     technical_analysis: Mapped[str | None] = mapped_column(Text)
     fundamental_analysis: Mapped[str | None] = mapped_column(Text)
+    # Narrative interpretation of the Python-computed DCF/Monte Carlo, plus a
+    # target the model may only draw from the provided valuation ranges.
+    valuation_analysis: Mapped[str | None] = mapped_column(Text)
+    price_target: Mapped[float | None] = mapped_column(Price)
     recommendation: Mapped[str | None] = mapped_column(String(16))
     confidence: Mapped[int | None] = mapped_column(Integer)
     scores_snapshot: Mapped[dict | None] = mapped_column(JSONB)
