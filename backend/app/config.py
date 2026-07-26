@@ -112,17 +112,21 @@ class Settings(BaseSettings):
     # budget and the progress bar are both only re-evaluated between chunks, so a
     # large chunk makes the scan overshoot its budget and look frozen meanwhile.
     scan_price_batch: int = Field(default=50, alias="SCAN_PRICE_BATCH")
-    # yfinance issues ONE request per ticker and defaults to only cpu_count()*2
-    # concurrent ones. Set this explicitly — it is the cheapest speedup available.
-    scan_yf_threads: int = Field(default=24, alias="SCAN_YF_THREADS")
+    # yfinance issues ONE request per ticker. Concurrency is the only lever, but
+    # it cuts both ways: hammering Yahoo from a datacenter IP gets the scan
+    # throttled, and a throttled request hangs rather than failing. daddiesmoney
+    # ran at yfinance's modest default and never stalled, so stay in that range.
+    scan_yf_threads: int = Field(default=8, alias="SCAN_YF_THREADS")
     # Two-pass funnel: snapshot the whole market cheaply (batched quote endpoint),
     # then fetch per-ticker history for the best pre-ranked survivors. This is a
     # CEILING — the deep stage actually runs until scan_deep_seconds is spent, so
     # a fast network analyses more names and a slow one still finishes on time.
     # 0 disables the prefilter and scans every name (much slower).
-    # Sized so the prefilter engages for BOTH modes (liquid ~1.5k and full ~10k)
-    # and the surviving set still fits under scan_cache_max, so a re-scan is warm.
-    scan_prefilter_keep: int = Field(default=900, alias="SCAN_PREFILTER_KEEP")
+    # How many names get a per-ticker history request. This is the number that
+    # decides whether Yahoo throttles us: daddiesmoney asked for ~255 and was
+    # fine, we asked for 900+ and stalled. Keep it in that neighbourhood — the
+    # snapshot has already ranked the field, so these are the names that matter.
+    scan_prefilter_keep: int = Field(default=400, alias="SCAN_PREFILTER_KEEP")
     # Wall-clock budget for the per-ticker history + technicals stage.
     scan_deep_seconds: int = Field(default=14, alias="SCAN_DEEP_SECONDS")
     # Wall-clock budget for the whole-market snapshot. Partial coverage is fine:

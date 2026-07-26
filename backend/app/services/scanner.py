@@ -242,6 +242,8 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
     survivors: list[dict] = []
     priced = 0
     deep_done = 0
+    empty_batches = 0
+    throttled = False
     batch_size = int(p["price_batch"])
     # Only memoize bars for a modest candidate set (see _cached_batch).
     cache_bars = len(tickers) <= settings.scan_cache_max
@@ -260,6 +262,19 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
         except Exception as exc:  # a bad batch must not kill the scan
             log.warning("price batch failed", extra={"start": i, "err": str(exc)})
             frames = {}
+        # A batch that yields nothing usually means Yahoo is throttling us (a
+        # throttled request hangs and then gets abandoned). Grinding through
+        # hundreds more only digs in deeper, so stop and say so.
+        if not frames:
+            empty_batches += 1
+            if empty_batches >= 3:
+                throttled = True
+                log.warning("stopping deep stage — provider appears to be throttling",
+                            extra={"processed": i, "priced": priced})
+                break
+        else:
+            empty_batches = 0
+
         for t in batch:
             df = frames.get(t)
             if df is None or df.empty:
@@ -290,7 +305,10 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
     survivors.sort(key=lambda x: (x["tech"].get("trend_score") or 0,
                                   x["tech"].get("momentum") or -1), reverse=True)
     jobs.update_scan_run(scan_run_id, counts_merge={
-        "priced": priced, "survivors": len(survivors), "deep": deep_done})
+        "priced": priced, "survivors": len(survivors), "deep": deep_done,
+        **({"throttled": True} if throttled else {})})
+    if throttled:
+        progress(56, f"Provider throttled — ranked the {len(survivors)} names we got")
 
     keep = survivors[: p["technical_keep"]]
 

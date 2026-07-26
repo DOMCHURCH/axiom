@@ -260,6 +260,10 @@ export default function BestStocks() {
                   <span title={counts.degraded_reason || 'market snapshot unavailable'}
                     style={{ color: T.gold, marginRight: 8 }}>⚠ slow path</span>
                 )}
+                {counts.throttled && (
+                  <span title="Yahoo throttled the price requests — ranked the names we got. A re-scan uses the cache."
+                    style={{ color: T.gold, marginRight: 8 }}>⚠ rate-limited</span>
+                )}
                 {scanned != null
                   ? <>Scanned <span style={{ color: T.text }}>{fmtNum(scanned, 0)}</span>
                       {analyzed != null && <> · analysed <span style={{ color: T.text }}>{fmtNum(analyzed, 0)}</span></>}
