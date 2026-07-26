@@ -1,4 +1,11 @@
-// Live quotes for a list of tickers — proxies Yahoo Finance (no key needed)
+// Live quotes for a list of tickers.
+//
+// Provider selection, bounding, caching and throttle detection all live in
+// _prices.js — this route is just the HTTP shell. It never hangs: if every
+// provider is unreachable it returns null prices with `degraded: true` rather
+// than holding the connection open until the function times out.
+import { getQuotes } from './_prices.js'
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
@@ -10,30 +17,17 @@ export default async function handler(req, res) {
   const syms = tickers.split(',').map(t => t.trim().toUpperCase()).filter(Boolean).slice(0, 20)
 
   try {
-    const results = await Promise.allSettled(
-      syms.map(async sym => {
-        const r = await fetch(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=2d`,
-          { headers: { 'User-Agent': 'Mozilla/5.0' } }
-        )
-        if (!r.ok) return null
-        const d = await r.json()
-        const meta = d?.chart?.result?.[0]?.meta
-        if (!meta) return null
-        const price = meta.regularMarketPrice ?? null
-        const prev = meta.chartPreviousClose ?? meta.previousClose ?? null
-        const chg = price != null && prev != null && prev !== 0
-          ? ((price - prev) / prev) * 100 : null
-        return { sym, price, chg }
-      })
-    )
+    const { quotes, sources, degraded, reason } = await getQuotes(syms)
 
-    const quotes = results
-      .map((r, i) => r.status === 'fulfilled' && r.value ? r.value : { sym: syms[i], price: null, chg: null })
-
-    // Cache for 60s at the edge — prices don't need to be tick-accurate on a landing page
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120')
-    res.status(200).json({ quotes })
+    // Only cache a clean response at the edge. Caching a degraded one would pin
+    // "price unavailable" in front of every visitor for the full minute, long
+    // after the provider recovered.
+    if (!degraded) {
+      res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120')
+    } else {
+      res.setHeader('Cache-Control', 'no-store')
+    }
+    res.status(200).json({ quotes, sources, degraded, reason })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

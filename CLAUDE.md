@@ -40,6 +40,26 @@ axiom/
 - `sk-ant-` → Anthropic → `claude-3-5-haiku-20241022`
 - `sk-` → OpenAI → `gpt-4o-mini`
 
+## Price data (`api/_prices.js`)
+Yahoo's chart endpoint takes the symbol in the **URL path**, so it needs one request
+per ticker — it can't batch like its quote endpoint. Under load from a datacenter IP
+Yahoo throttles by **hanging** the request rather than erroring, so an unbounded
+`fetch` doesn't fail fast: it burns the whole function budget and returns nothing.
+
+`_prices.js` is the single price path for `api/quotes.js` and `api/edgar.js`:
+- **Bounded** — every fetch has an `AbortController` timeout (Yahoo 3.5s, keyed 5s), so a hang degrades instead of stalling the caller
+- **Cached** — 60s per symbol in module memory (survives warm invocations); misses cached 5min so a bad symbol can't stampede
+- **Circuit-broken** — 3 consecutive hangs trips a provider out of rotation for 10min instead of re-hammering an IP that's already penalised
+- **Honest** — callers get `sources` / `degraded` / `reason`; `financials.priceSource` is `null` when nothing answered, so a price-less report is labelled, never faked
+
+Provider order is by cost of being throttled, so setting a key **switches off Yahoo**
+automatically — no code change:
+| Env var | Provider | Requests per batch |
+|---|---|---|
+| `FMP_API_KEY` | Financial Modeling Prep | 1 |
+| `POLYGON_API_KEY` | Polygon snapshot | 1 |
+| *(none)* | Yahoo — zero-config default | 1 per symbol, capped at 4 concurrent |
+
 ## Two-pass AI analysis
 1. Pass 1 — Chain-of-thought: IB analyst reasons through the investment case
 2. Pass 2 — Structured JSON extraction: recommendation, DCF assumptions, comps, risks, thesis

@@ -1,3 +1,5 @@
+import { getQuote } from './_prices.js'
+
 const UA = 'AXIOM/1.0 research@axiom.app'
 
 // Module-level cache for the SEC ticker map — identical for every ticker, so
@@ -264,19 +266,20 @@ export default async function handler(req, res) {
       shares: sharesPrior,
     }
 
-    // ── Live stock price (Yahoo Finance, free, no key) ──
+    // ── Live stock price ──
+    // Best-effort, and now genuinely so: the fetch is bounded, so a throttled
+    // provider that hangs instead of erroring can no longer hold this whole
+    // request (filings and all) hostage until the 30s function budget expires.
+    // `priceSource` is null when nothing answered, so the client can label the
+    // valuation as filing-only rather than implying a live mark.
     let price = null
     let marketCap = null
+    let priceSource = null
     try {
-      const yf = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?interval=1d&range=1d`, {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-      })
-      if (yf.ok) {
-        const yfData = await yf.json()
-        const meta = yfData?.chart?.result?.[0]?.meta
-        price = meta?.regularMarketPrice ?? null
-        if (price != null && shares != null) marketCap = price * shares
-      }
+      const { quote, source } = await getQuote(t)
+      price = quote?.price ?? null
+      priceSource = source
+      if (price != null && shares != null) marketCap = price * shares
     } catch { /* price is best-effort; non-fatal */ }
 
     // Derived metrics
@@ -305,7 +308,17 @@ export default async function handler(req, res) {
     // (AAPL, NVDA, ...) get ~1 EDGAR fetch per 15min instead of one per request
     // — a >99% load reduction at any real volume — while the price stays fresh
     // enough for a research note. 1h stale-while-revalidate hides cold fetches.
-    res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600')
+    //
+    // When the price didn't resolve, cache for 60s instead: the filings half is
+    // still worth serving, but pinning a price-less response for 15 minutes
+    // would outlast the throttle that caused it and make a transient block look
+    // like a permanent one.
+    res.setHeader(
+      'Cache-Control',
+      price != null
+        ? 's-maxage=900, stale-while-revalidate=3600'
+        : 's-maxage=60, stale-while-revalidate=300'
+    )
     res.status(200).json({
       financials: {
         ticker: t,
@@ -373,6 +386,9 @@ export default async function handler(req, res) {
         // Market data
         price,
         marketCap,
+        // Which provider answered ('fmp' | 'polygon' | 'yahoo' | 'cache'), or
+        // null when none did — price and marketCap are then null, not stale.
+        priceSource,
         // Prior-year snapshot for scoring
         prior,
       },
