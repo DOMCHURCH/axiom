@@ -131,9 +131,31 @@ def _frame(rows: list[dict]) -> pd.DataFrame:
 # provider simply doesn't cover is omitted — that's a miss to pass down the
 # chain, not a provider failure.
 
+# Per-batch cap on single-ticker retries. yfinance's threaded batch silently drops
+# names (its tz-cache lock under threading), and those are recoverable one at a
+# time — but each retry is another per-ticker request, so keep it tight.
+_YAHOO_RETRY_CAP = 8
+
+
 def _from_yahoo(tickers: list[str], period: str) -> dict[str, pd.DataFrame]:
-    return {t: df for t, df in (yahoo.download_batch(tickers, period=period) or {}).items()
-            if df is not None and not df.empty}
+    got = {t: df for t, df in (yahoo.download_batch(tickers, period=period) or {}).items()
+           if df is not None and not df.empty}
+    # Retry names the batch dropped — but ONLY if the batch returned something.
+    # A wholly empty batch is the throttle signature, and retrying into a throttle
+    # is what turns a slow scan into a stalled one; better to fall through to the
+    # next provider and let the breaker trip. (yahoo.fetch_prices_bulk retried
+    # unconditionally, which is the one thing worth changing about it.)
+    if got:
+        missing = [t for t in tickers if t not in got]
+        for t in missing[:_YAHOO_RETRY_CAP]:
+            try:
+                df = yahoo.fetch_ohlcv(t, period)
+            except Exception as exc:  # noqa: BLE001
+                log.debug("yahoo single retry failed", extra={"ticker": t, "err": str(exc)})
+                continue
+            if df is not None and not df.empty:
+                got[t] = df
+    return got
 
 
 def _yahoo_available(_days: int) -> bool:

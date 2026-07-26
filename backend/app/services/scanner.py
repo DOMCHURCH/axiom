@@ -76,30 +76,63 @@ def _call_bounded(fn, timeout: float, default, what: str):
         return default
 
 
+def _bar_key(ticker: str, period: str) -> str:
+    return _key("bar", period, ticker)
+
+
 def _cached_batch(batch: list[str], period: str, use_cache: bool,
                   timeout: float = 25.0) -> tuple[dict, bool]:
-    """Fetch one chunk of daily bars. Returns (frames, came_from_cache).
+    """Fetch one chunk of daily bars. Returns (frames, starved).
 
-    Caching is deliberately bounded: a few hundred frames is a few MB and makes a
-    re-scan instant, but memoizing thousands would hold hundreds of MB and risk
-    an OOM on a small container — the exact problem streaming was added to solve.
+    `starved` means a provider was asked for the tickers we lacked and returned
+    nothing — the throttle signature. It is deliberately NOT "frames is empty": a
+    warm cache can serve a batch while the provider is dead (progress, not a
+    throttle), and a mostly-cached batch can hide a fetch that yielded nothing.
+    A batch needing no fetch at all is never starved.
+
+    Cached PER TICKER, deliberately — not per batch. Batches are chunks of a list
+    ordered by `prefilter.prerank`, which scores on live price/SMA/52w, so any
+    price move reshuffles it. A batch-shaped key then almost never matches again:
+    one new name entering the top-N shifts every downstream batch by a position
+    and invalidates all of their keys, so the bars sit in the cache under keys
+    nothing will ask for and each scan re-pays the provider in full. Per-ticker
+    keys are independent of both order and membership, which is the property that
+    actually makes a re-scan inside the TTL cost zero requests.
+
+    Only the tickers genuinely missing are fetched, so a partial hit still cuts
+    the request count. Memory is unchanged from batch-keying — the same frames are
+    held, just addressed individually — and the caller's `use_cache` gate keeps the
+    huge degraded-path universe out of the cache entirely.
     """
-    def _download():
+    def _fetch(wanted: list[str]):
         # Provider chain, not Yahoo directly: when Yahoo starts hanging it is
         # tripped out of rotation and the batch is served by Polygon/FMP instead,
         # so a throttled IP degrades the deep stage rather than ending it.
-        return bars.fetch_batch(batch, period=period)
+        return bars.fetch_batch(wanted, period=period)
 
     if not use_cache:
-        return _call_bounded(_download, timeout, {}, f"bars[{len(batch)}]"), False
-    key = _key("bars", period, ",".join(batch))
-    hit = cache_get(key)
-    if hit is not None:
-        return hit, True
-    frames = _call_bounded(_download, timeout, {}, f"bars[{len(batch)}]")
-    if frames:
-        cache_set(key, frames, _PRICE_TTL)
-    return frames, False
+        frames = _call_bounded(lambda: _fetch(batch), timeout, {},
+                               f"bars[{len(batch)}]") or {}
+        return frames, not frames
+
+    frames: dict = {}
+    missing: list[str] = []
+    for t in batch:
+        hit = cache_get(_bar_key(t, period))
+        if hit is not None:
+            frames[t] = hit
+        else:
+            missing.append(t)
+    if not missing:
+        return frames, False        # nothing was asked for, so nothing starved
+
+    fetched = _call_bounded(lambda: _fetch(missing), timeout, {},
+                            f"bars[{len(missing)}]") or {}
+    for t, df in fetched.items():
+        if df is not None and not df.empty:
+            cache_set(_bar_key(t, period), df, _PRICE_TTL)
+    frames.update(fetched)
+    return frames, not fetched
 
 
 def _fmp_bundle(ticker: str, deadline: float | None = None) -> dict:
@@ -239,7 +272,6 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
     # ordered best-first by the snapshot pre-rank, so we work down that list until
     # the budget is spent. A fast network analyses more names, a slow one still
     # finishes on schedule, and either way we never blow the scan's total time.
-    total_t = max(1, len(tickers))
     deep_deadline = time.time() + max(3, int(p["deep_seconds"]))
     progress(12, f"Fetching prices for {len(tickers)} tickers")
     survivors: list[dict] = []
@@ -256,25 +288,22 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
                      extra={"processed": i, "of": len(tickers), "priced": priced})
             break
         batch = tickers[i:i + batch_size]
-        cached = False
         try:
             # never let one batch outlive the stage's remaining budget
             left = max(5.0, deep_deadline - time.time())
-            frames, cached = _cached_batch(batch, p["price_period"], cache_bars,
-                                           timeout=min(25.0, left))
+            frames, starved = _cached_batch(batch, p["price_period"], cache_bars,
+                                            timeout=min(25.0, left))
         except Exception as exc:  # a bad batch must not kill the scan
             log.warning("price batch failed", extra={"start": i, "err": str(exc)})
-            frames = {}
-        # A batch that yields nothing usually means Yahoo is throttling us (a
-        # throttled request hangs and then gets abandoned). Grinding through
-        # hundreds more only digs in deeper, so stop and say so.
-        if not frames:
+            frames, starved = {}, True
+        # Asking a provider for the missing names and getting nothing back is the
+        # throttle signature (a hung request, abandoned, yields {}). Key on that
+        # rather than on `frames`: now that bars are cached per ticker, a batch can
+        # be fully served from cache while the provider is dead — which is progress,
+        # not a throttle — and conversely a mostly-cached batch can hide a fetch
+        # that returned nothing at all.
+        if starved:
             empty_batches += 1
-            if empty_batches >= 3:
-                throttled = True
-                log.warning("stopping deep stage — provider appears to be throttling",
-                            extra={"processed": i, "priced": priced})
-                break
         else:
             empty_batches = 0
 
@@ -291,8 +320,18 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
                 continue
             # note: no DataFrame retained — prices for the finalists are re-fetched
             survivors.append({"ticker": t, "company_id": cid, "cik": cmap[t][1], "tech": tech})
-        if not cached:
-            frames.clear()          # free the frames — unless they're the cache's
+        # Always safe to clear now: `frames` is assembled locally per call, so it is
+        # never the cached object itself (per-ticker keys hold the DataFrames). The
+        # cache keeps its own references; this just drops ours.
+        frames.clear()
+        # Stop only after banking this batch's survivors — with a warm cache there
+        # can be real names in a batch whose fetch came back empty.
+        if empty_batches >= 3:
+            throttled = True
+            log.warning("stopping deep stage — provider appears to be throttling",
+                        extra={"processed": i, "priced": priced})
+            deep_done = min(i + batch_size, len(tickers))
+            break
         done = min(i + batch_size, len(tickers))
         deep_done = done
         # Progress is scaled against what the time budget can realistically reach,

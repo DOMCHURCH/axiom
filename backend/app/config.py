@@ -116,7 +116,11 @@ class Settings(BaseSettings):
     # it cuts both ways: hammering Yahoo from a datacenter IP gets the scan
     # throttled, and a throttled request hangs rather than failing. daddiesmoney
     # ran at yfinance's modest default and never stalled, so stay in that range.
-    scan_yf_threads: int = Field(default=8, alias="SCAN_YF_THREADS")
+    # That default is `cpu_count() * 2` — 2-4 on a small container — so 8 was
+    # DOUBLE the profile it was meant to match, on top of ~1.6x the request count
+    # (400 prefilter survivors vs daddiesmoney's 255-name universe). 4 is the top
+    # of the range that is actually known to survive.
+    scan_yf_threads: int = Field(default=4, alias="SCAN_YF_THREADS")
     # Which provider serves price history. 'auto' walks the failover chain in
     # app.data.bars (yahoo -> polygon -> fmp), so a Yahoo block degrades the deep
     # stage instead of ending it. Pin to 'fmp' or 'polygon' to take Yahoo out of
