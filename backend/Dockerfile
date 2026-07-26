@@ -22,8 +22,9 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
 
-EXPOSE 8000
+EXPOSE 8080
 
-# Default = api. Worker service overrides this with:
-#   celery -A app.worker.celery_app worker --loglevel=info --concurrency=4
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Bind Railway's injected $PORT (defaults to 8080). The railway.json start
+# command normally overrides this (it also runs the DB migration first), but
+# this fallback keeps the port correct even if run directly.
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
