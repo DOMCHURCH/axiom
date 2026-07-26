@@ -85,3 +85,22 @@ def economic_calendar(from_date: str, to_date: str) -> list | None:
 
 def budget_remaining() -> int:
     return fmp_throttle.remaining_day() or 0
+
+
+def historical_prices(ticker: str, days: int = 260) -> list | None:
+    """Daily OHLCV history for one ticker, newest-first.
+
+    One request per ticker — same shape as the Yahoo chart endpoint — but with a
+    published rate limit and a hard 8s timeout, so it fails fast instead of
+    hanging. That's the property that matters when Yahoo has started stalling:
+    the scan gets a real answer or a real error, never an open socket.
+
+    Bars are daily, so this is cached for 4h — a re-scan the same session spends
+    no budget. Costs one of the 250/day calls on a miss.
+    """
+    data = _get(f"historical-price-full/{ticker}",
+                {"timeseries": max(1, int(days))}, ttl=4 * 3600)
+    if not data:
+        return None
+    rows = data.get("historical") if isinstance(data, dict) else None
+    return rows or None

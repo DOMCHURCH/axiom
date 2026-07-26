@@ -46,6 +46,24 @@ data is missing — the exact technicals stay authoritative. If the snapshot is
 unavailable the scan simply falls back to scanning everything.
 See `docs/ARCHITECTURE.md` §5.
 
+### Price-history failover (`backend/app/data/bars.py`)
+Bounding each fetch stops a hang freezing the scan, but it can't *produce* prices:
+once Yahoo rate-limits the deploy's IP range that penalty outlives any single scan,
+and no concurrency tuning gets history out of it. So price history goes through a
+provider chain, ordered by what a throttle costs:
+
+| Provider | Cost | Behaviour under stress |
+|---|---|---|
+| `yahoo` | 1 request **per ticker** | hangs (no error) — free and unmetered when healthy |
+| `polygon` | 1 request **per market day**, any number of tickers | published limit; ~260 requests for 1y, so needs `POLYGON_PER_MIN ≥ 60` to run inline |
+| `fmp` | 1 request per ticker | hard 8s timeout — fails fast; 250/day |
+
+A provider that returns nothing for a whole batch is presumed to be throttling and
+is tripped out of rotation for 15 minutes, so the rest of the scan goes straight to
+one that answers instead of re-earning the same hang batch after batch. A provider
+that is merely *unconfigured* is skipped without counting against its breaker.
+`SCAN_BARS_PROVIDER` pins one provider and takes the others out of the path.
+
 ## Scoring (deterministic, in Python — `backend/app/quant/scoring.py`)
 Six 0–100 sub-scores + a weighted composite → recommendation
 (`Strong Buy / Buy / Hold / Watch / Avoid`). Risk is inverted (higher = safer).

@@ -117,6 +117,12 @@ class Settings(BaseSettings):
     # throttled, and a throttled request hangs rather than failing. daddiesmoney
     # ran at yfinance's modest default and never stalled, so stay in that range.
     scan_yf_threads: int = Field(default=8, alias="SCAN_YF_THREADS")
+    # Which provider serves price history. 'auto' walks the failover chain in
+    # app.data.bars (yahoo -> polygon -> fmp), so a Yahoo block degrades the deep
+    # stage instead of ending it. Pin to 'fmp' or 'polygon' to take Yahoo out of
+    # the path entirely — the right move if Yahoo has blocked this IP range, since
+    # that penalty outlasts any retry. 'yahoo' restores the old behaviour.
+    scan_bars_provider: str = Field(default="auto", alias="SCAN_BARS_PROVIDER")
     # Two-pass funnel: snapshot the whole market cheaply (batched quote endpoint),
     # then fetch per-ticker history for the best pre-ranked survivors. This is a
     # CEILING — the deep stage actually runs until scan_deep_seconds is spent, so

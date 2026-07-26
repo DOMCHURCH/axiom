@@ -23,7 +23,7 @@ from app.config import settings
 from app.core.cache import _key, cache_get, cache_set
 from app.core.logging import get_logger
 from app.core.ratelimit import BudgetExhausted
-from app.data import fmp, market_snapshot, sec, yahoo
+from app.data import bars, fmp, market_snapshot, sec
 from app.data.liquid_universe import LIQUID_TICKERS
 from app.data.universe import active_tickers, upsert_universe
 from app.db.models import Company, ScanResult
@@ -85,7 +85,10 @@ def _cached_batch(batch: list[str], period: str, use_cache: bool,
     an OOM on a small container — the exact problem streaming was added to solve.
     """
     def _download():
-        return yahoo.download_batch(batch, period=period)
+        # Provider chain, not Yahoo directly: when Yahoo starts hanging it is
+        # tripped out of rotation and the batch is served by Polygon/FMP instead,
+        # so a throttled IP degrades the deep stage rather than ending it.
+        return bars.fetch_batch(batch, period=period)
 
     if not use_cache:
         return _call_bounded(_download, timeout, {}, f"bars[{len(batch)}]"), False
@@ -316,9 +319,11 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
     # persisted for the detail-page chart (a single small batched call).
     if keep:
         progress(56, f"Loading price history for {len(keep)} finalists")
+        # Same failover chain as the deep stage: a Yahoo block must not leave the
+        # finalists chartless when Polygon/FMP could still serve their candles.
         keep_frames = _call_bounded(
-            lambda: yahoo.fetch_prices_bulk([c["ticker"] for c in keep],
-                                            period=p["price_period"]),
+            lambda: bars.fetch_bulk([c["ticker"] for c in keep],
+                                    period=p["price_period"]),
             timeout=30.0, default={}, what="finalist-bars")
         for cand in keep:
             cand["df"] = keep_frames.get(cand["ticker"])
