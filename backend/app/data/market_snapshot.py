@@ -37,6 +37,11 @@ _FIELDS = (
     "symbol", "regularMarketPrice", "regularMarketVolume", "averageDailyVolume3Month",
     "averageDailyVolume10Day", "marketCap", "fiftyDayAverage", "twoHundredDayAverage",
     "fiftyTwoWeekHigh", "fiftyTwoWeekLow",
+    # momentum + cheap valuation, so every liquid name can be scored from the
+    # snapshot alone rather than only the few that get full history
+    "fiftyTwoWeekChangePercent", "regularMarketChangePercent",
+    "fiftyDayAverageChangePercent", "twoHundredDayAverageChangePercent",
+    "trailingPE", "forwardPE", "priceToBook", "epsTrailingTwelveMonths",
 )
 
 
@@ -46,6 +51,12 @@ def _f(x) -> float | None:
     except (TypeError, ValueError):
         return None
     return v if v == v and v not in (float("inf"), float("-inf")) else None
+
+
+def _pct(x) -> float | None:
+    """Yahoo percent field -> fraction (23.4 -> 0.234). None stays None."""
+    v = _f(x)
+    return None if v is None else v / 100.0
 
 
 def _row(q: dict) -> dict:
@@ -66,6 +77,16 @@ def _row(q: dict) -> dict:
         "sma_200": _f(q.get("twoHundredDayAverage")),
         "high_52w": _f(q.get("fiftyTwoWeekHigh")),
         "low_52w": _f(q.get("fiftyTwoWeekLow")),
+        # Yahoo reports these as percents (e.g. 23.4 == +23.4%); normalize to
+        # fractions so they match the rest of the codebase's convention.
+        "return_52w": _pct(q.get("fiftyTwoWeekChangePercent")),
+        "change_today": _pct(q.get("regularMarketChangePercent")),
+        "vs_sma50": _pct(q.get("fiftyDayAverageChangePercent")),
+        "vs_sma200": _pct(q.get("twoHundredDayAverageChangePercent")),
+        "pe": _f(q.get("trailingPE")),
+        "forward_pe": _f(q.get("forwardPE")),
+        "pb": _f(q.get("priceToBook")),
+        "eps": _f(q.get("epsTrailingTwelveMonths")),
     }
 
 

@@ -205,6 +205,10 @@ export default function BestStocks() {
   // Funnel counts from the most recent scan run: scanned -> liquidity survivors -> top N
   const counts = overview?.last_scan?.counts || {}
   const scanned = counts.universe ?? null
+  // every name with a usable quote is scored from the market snapshot; only the
+  // best pre-ranked slice gets full price history within the time budget
+  const analyzed = counts.analyzed ?? null
+  const deep = counts.deep ?? null
   const survivors = counts.survivors ?? null
   const universe = scanned ?? overview?.active ?? overview?.companies ?? null
   const reports = overview?.reports ?? null
@@ -238,9 +242,10 @@ export default function BestStocks() {
               <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2, marginTop: 6 }}>
                 {scanned != null
                   ? <>Scanned <span style={{ color: T.text }}>{fmtNum(scanned, 0)}</span>
-                      {survivors != null && <> · <span style={{ color: T.text }}>{fmtNum(survivors, 0)}</span> liquid</>}
+                      {analyzed != null && <> · analysed <span style={{ color: T.text }}>{fmtNum(analyzed, 0)}</span></>}
+                      {deep ? <> · deep <span style={{ color: T.text }}>{fmtNum(deep, 0)}</span></> : null}
                       {' · '}top <span style={{ color: T.accent }}>{n || TOP_N}</span></>
-                  : <>Ranks a ~1,460-name liquid universe down to the top {TOP_N}</>}
+                  : <>Ranks the whole US market down to the top {TOP_N}</>}
                 {asOf ? ` · ${asOf.toLocaleTimeString()}` : lastScan ? ` · ${lastScan}` : ''}
               </div>
             </div>
@@ -298,12 +303,12 @@ export default function BestStocks() {
               <Pill color={T.green}>{buyPlus} buy-rated</Pill>
               <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted2 }}>of {n}</span>
             </div>} />
-          <KpiTile label="Scanned" value={universe != null ? fmtNum(universe, 0) : '—'}
+          <KpiTile label="Analysed" value={analyzed != null ? fmtNum(analyzed, 0) : (universe != null ? fmtNum(universe, 0) : '—')}
             sub={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {survivors != null
-                ? <><Pill color={T.accent}>{fmtNum(survivors, 0)} liquid</Pill>
+              {deep
+                ? <><Pill color={T.accent}>{fmtNum(deep, 0)} deep</Pill>
                     <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted2 }}>→ top {n || TOP_N}</span></>
-                : <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2 }}>liquid US equities</span>}
+                : <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2 }}>US equities scored</span>}
             </div>} />
           <KpiTile label="Sentiment" value={sentiment != null ? (sentiment > 0 ? '+' : '') + sentiment.toFixed(2) : '—'} valueColor={sentColor}
             sub={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

@@ -109,9 +109,13 @@ class Settings(BaseSettings):
     # concurrent ones. Set this explicitly — it is the cheapest speedup available.
     scan_yf_threads: int = Field(default=24, alias="SCAN_YF_THREADS")
     # Two-pass funnel: snapshot the whole market cheaply (batched quote endpoint),
-    # then fetch per-ticker history for only this many pre-ranked survivors.
+    # then fetch per-ticker history for the best pre-ranked survivors. This is a
+    # CEILING — the deep stage actually runs until scan_deep_seconds is spent, so
+    # a fast network analyses more names and a slow one still finishes on time.
     # 0 disables the prefilter and scans every name (much slower).
-    scan_prefilter_keep: int = Field(default=600, alias="SCAN_PREFILTER_KEEP")
+    scan_prefilter_keep: int = Field(default=2500, alias="SCAN_PREFILTER_KEEP")
+    # Wall-clock budget for the per-ticker history + technicals stage.
+    scan_deep_seconds: int = Field(default=14, alias="SCAN_DEEP_SECONDS")
     # Only the strongest technical candidates get (rate-limited) fundamentals.
     # 6 FMP calls each against a 250/day free tier means ~20 names is also the
     # most we can afford per scan without burning the daily budget in one run.

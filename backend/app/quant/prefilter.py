@@ -60,16 +60,20 @@ def prerank_score(row: dict | None) -> float | None:
 
     score = 0.0
     if sma50 is not None and price > sma50:
-        score += 22
+        score += 18
     if sma200 is not None and price > sma200:
-        score += 22
+        score += 18
     if sma50 is not None and sma200 is not None and sma50 > sma200:
-        score += 16
+        score += 14
     if hi is not None and hi > 0:
         # proximity to the 52-week high (within 25% of it earns most of this)
-        score += 25 * max(0.0, min(1.0, 1.0 - (hi - price) / (hi * 0.25))) if price <= hi else 25
+        score += 20 * max(0.0, min(1.0, 1.0 - (hi - price) / (hi * 0.25))) if price <= hi else 20
     if lo is not None and lo > 0 and hi is not None and hi > lo:
-        score += 15 * max(0.0, min(1.0, (price - lo) / (hi - lo)))
+        score += 12 * max(0.0, min(1.0, (price - lo) / (hi - lo)))
+    # real 12-month momentum when the snapshot carries it (-20%..+60% -> 0..18)
+    r52 = row.get("return_52w")
+    if r52 is not None:
+        score += 18 * max(0.0, min(1.0, (r52 + 0.20) / 0.80))
     return round(min(100.0, score), 2)
 
 

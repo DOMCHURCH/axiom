@@ -75,6 +75,7 @@ def _resolve_params(params: dict | None) -> dict:
         "universe_limit": params.get("universe_limit"),
         "price_batch": params.get("price_batch", settings.scan_price_batch),
         "prefilter_keep": params.get("prefilter_keep", settings.scan_prefilter_keep),
+        "deep_seconds": params.get("deep_seconds", settings.scan_deep_seconds),
         "min_price": params.get("min_price", settings.universe_min_price),
         "min_dollar_vol": params.get("min_dollar_vol", settings.universe_min_avg_dollar_volume),
         "min_market_cap": params.get("min_market_cap", settings.universe_min_market_cap),
@@ -145,16 +146,18 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
 
     prefiltered = False
     if snapshot and len(snapshot) >= len(tickers) * 0.5:
+        # every name with a usable quote is genuinely scored here, not skipped
+        analyzed = sum(1 for r in snapshot.values() if r and r.get("price") is not None)
         liquid = prefilter.liquidity_gate(snapshot, min_price=p["min_price"],
                                           min_dollar_vol=p["min_dollar_vol"])
         candidates = prefilter.prerank(snapshot, liquid, keep=p["prefilter_keep"])
         if candidates:
             log.info("prefilter narrowed universe",
-                     extra={"universe": len(tickers), "liquid": len(liquid),
-                            "candidates": len(candidates)})
+                     extra={"universe": len(tickers), "analyzed": analyzed,
+                            "liquid": len(liquid), "candidates": len(candidates)})
             jobs.update_scan_run(scan_run_id, counts_merge={
-                "snapshot": len(snapshot), "liquid": len(liquid),
-                "candidates": len(candidates)})
+                "snapshot": len(snapshot), "analyzed": analyzed,
+                "liquid": len(liquid), "candidates": len(candidates)})
             tickers = candidates
             prefiltered = True
     if not prefiltered:
@@ -166,12 +169,22 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
     # batch at a time, each batch is reduced to small technical dicts, and the
     # DataFrames are dropped immediately. Holding every frame at once (6k x ~250
     # rows) costs hundreds of MB and is what made big scans crawl or die.
+    # The deep stage is TIME-BUDGETED rather than count-capped: names are already
+    # ordered best-first by the snapshot pre-rank, so we work down that list until
+    # the budget is spent. A fast network analyses more names, a slow one still
+    # finishes on schedule, and either way we never blow the scan's total time.
     total_t = max(1, len(tickers))
+    deep_deadline = time.time() + max(3, int(p["deep_seconds"]))
     progress(12, f"Fetching prices for {len(tickers)} tickers")
     survivors: list[dict] = []
     priced = 0
+    deep_done = 0
     batch_size = int(p["price_batch"])
     for i in range(0, len(tickers), batch_size):
+        if i and time.time() >= deep_deadline:
+            log.info("deep stage budget spent",
+                     extra={"processed": i, "of": len(tickers), "priced": priced})
+            break
         batch = tickers[i:i + batch_size]
         try:
             frames = yahoo.download_batch(batch, period=p["price_period"])
@@ -193,12 +206,14 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
             survivors.append({"ticker": t, "company_id": cid, "cik": cmap[t][1], "tech": tech})
         frames.clear()
         done = min(i + batch_size, len(tickers))
+        deep_done = done
         progress(12 + int(43 * done / total_t),
-                 f"Priced {done}/{len(tickers)} · {len(survivors)} pass liquidity")
+                 f"Deep-analysed {done}/{len(tickers)} · {len(survivors)} pass liquidity")
 
     survivors.sort(key=lambda x: (x["tech"].get("trend_score") or 0,
                                   x["tech"].get("momentum") or -1), reverse=True)
-    jobs.update_scan_run(scan_run_id, counts_merge={"priced": priced, "survivors": len(survivors)})
+    jobs.update_scan_run(scan_run_id, counts_merge={
+        "priced": priced, "survivors": len(survivors), "deep": deep_done})
 
     keep = survivors[: p["technical_keep"]]
 
