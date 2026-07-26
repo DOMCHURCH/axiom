@@ -36,7 +36,10 @@ export const palette = {
   // semantic
   green:    '#4ade80',
   greenLo:  'rgba(74,222,128,0.12)',
+  greenBd:  'rgba(74,222,128,0.30)',
   red:      '#f87171',
+  redLo:    'rgba(248,113,113,0.12)',
+  redBd:    'rgba(248,113,113,0.30)',
   gold:     '#f5a524',
   // text
   text:     '#f4f5f7',

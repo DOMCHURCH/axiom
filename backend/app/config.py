@@ -100,8 +100,8 @@ class Settings(BaseSettings):
     universe_min_price: float = 3.0
     universe_min_avg_dollar_volume: float = 1_000_000.0
     universe_min_market_cap: float = 100_000_000.0
-    scan_technical_keep: int = 300
-    scan_top_n: int = 100
+    scan_technical_keep: int = 60
+    scan_top_n: int = 50
 
     # -------------------------------------------------------------- helpers
     @staticmethod

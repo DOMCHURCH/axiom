@@ -97,10 +97,10 @@ export function ScoreRing({ value, size = 84 }) {
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center' }}>
-        <span className="tnum" style={{ fontFamily: C.mono, fontSize: size > 70 ? 22 : 16, fontWeight: 700, color }}>
+        <span className="tnum" style={{ fontFamily: C.mono, fontSize: size > 70 ? 22 : size < 50 ? 13 : 16, fontWeight: 700, color }}>
           {value == null ? '—' : fmtNum(value, 0)}
         </span>
-        <span style={{ fontFamily: C.mono, fontSize: 8, color: C.muted2, letterSpacing: 1 }}>SCORE</span>
+        {size >= 56 && <span style={{ fontFamily: C.mono, fontSize: 8, color: C.muted2, letterSpacing: 1 }}>SCORE</span>}
       </div>
     </div>
   )

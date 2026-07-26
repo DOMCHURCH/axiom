@@ -20,6 +20,7 @@ from app.config import settings
 from app.core.logging import get_logger
 from app.core.ratelimit import BudgetExhausted
 from app.data import fmp, sec, yahoo
+from app.data.liquid_universe import LIQUID_TICKERS
 from app.data.universe import active_tickers, upsert_universe
 from app.db.models import Company, ScanResult
 from app.db.session import session_scope
@@ -56,6 +57,7 @@ def _fmp_bundle(ticker: str) -> dict:
 def _resolve_params(params: dict | None) -> dict:
     params = params or {}
     return {
+        "universe": params.get("universe", "liquid"),   # "liquid" (fast default) | "full" (deep SEC scan)
         "universe_limit": params.get("universe_limit"),
         "min_price": params.get("min_price", settings.universe_min_price),
         "min_dollar_vol": params.get("min_dollar_vol", settings.universe_min_avg_dollar_volume),
@@ -81,13 +83,25 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
     # ---- Stage 1: universe -------------------------------------------------
     progress(3, "Loading universe")
     with session_scope() as s:
-        tickers = active_tickers(s, limit=p["universe_limit"])
-        if not tickers:
+        # Company rows must exist for id/cik lookups; seed once from SEC if empty.
+        if not active_tickers(s, limit=1):
             upsert_universe(s)
+
+        if p["universe"] == "full":
+            # Deep scan: the entire SEC universe (~10k names — minutes, opt-in).
             tickers = active_tickers(s, limit=p["universe_limit"])
+        else:
+            # Fast default: curated, sector-tagged liquid shortlist (~250 names).
+            tickers = list(LIQUID_TICKERS)
+            if p["universe_limit"]:
+                tickers = tickers[: p["universe_limit"]]
+
         cmap = {t: (cid, cik) for cid, t, cik in
                 s.execute(select(Company.id, Company.ticker, Company.cik)
                           .where(Company.ticker.in_(tickers))).all()}
+    # Keep only names seeded in the company table (drops any liquid ticker not in
+    # SEC's list, e.g. some ETFs); a no-op for the full universe.
+    tickers = [t for t in tickers if t in cmap]
     jobs.update_scan_run(scan_run_id, universe_size=len(tickers), counts_merge={"universe": len(tickers)})
 
     # ---- Stage 2: bulk prices (yahoo, unlimited) --------------------------

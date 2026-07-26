@@ -15,6 +15,7 @@ router = APIRouter(prefix="/scanner", tags=["scanner"], dependencies=[Depends(re
 
 
 class ScanBody(BaseModel):
+    universe: str | None = None            # "liquid" (fast default) | "full" (deep SEC scan)
     universe_limit: int | None = None
     top_n: int | None = None
     technical_keep: int | None = None

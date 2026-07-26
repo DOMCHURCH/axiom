@@ -35,6 +35,11 @@
       ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
       ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); background-clip: padding-box; }
       * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.14) transparent; }
+      /* Skeleton shimmer + panel rise-in */
+      @keyframes ax-shimmer { 0% { opacity: 0.4 } 50% { opacity: 0.75 } 100% { opacity: 0.4 } }
+      .ax-shimmer { animation: ax-shimmer 1.4s ease-in-out infinite; border-radius: 10px; }
+      @keyframes ax-rise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
+      .ax-rise { animation: ax-rise 0.4s cubic-bezier(0.16,1,0.3,1) both; }
       /* Smooth transitions for interactive elements */
       button, a { transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1); }
       /* Focus visible for accessibility */
