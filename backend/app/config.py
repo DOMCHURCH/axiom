@@ -138,13 +138,21 @@ class Settings(BaseSettings):
     # snapshot has already ranked the field, so these are the names that matter.
     scan_prefilter_keep: int = Field(default=400, alias="SCAN_PREFILTER_KEEP")
     # Wall-clock budget for the per-ticker history + technicals stage.
-    scan_deep_seconds: int = Field(default=14, alias="SCAN_DEEP_SECONDS")
+    # Sized against the actual request rate rather than picked: at SCAN_YF_THREADS=4
+    # and ~0.3s per Yahoo chart request that is ~13/s, so 14s only reached ~180 of
+    # 400 candidates on a cold cache. 20s covers ~260, and the snapshot tail (see
+    # scanner Stage 4b) ranks whatever is left, so the list is complete either way.
+    # A warm cache finishes in a fraction of this regardless.
+    scan_deep_seconds: int = Field(default=20, alias="SCAN_DEEP_SECONDS")
     # Wall-clock budget for the whole-market snapshot. Partial coverage is fine:
     # the snapshot only gates and pre-ranks, and exact technicals decide later.
     scan_snapshot_seconds: int = Field(default=12, alias="SCAN_SNAPSHOT_SECONDS")
-    # Daily bars are memoized for 4h so a RE-scan costs zero Yahoo requests, but
-    # only when the candidate set is at most this many names — caching thousands
-    # of DataFrames would hold hundreds of MB.
+    # DEPRECATED / no longer read. It used to gate bar caching on universe size,
+    # which had the perverse effect of disabling the cache on the full ~10k path —
+    # the slowest and most throttle-prone one. Bars are now keyed per ticker, so the
+    # cache only holds what was actually fetched (~14 KB/frame) and the deep stage's
+    # time budget bounds that. Kept only so an existing SCAN_CACHE_MAX in a Railway
+    # env or .env does not fail validation; remove once those are cleaned up.
     scan_cache_max: int = Field(default=1000, alias="SCAN_CACHE_MAX")
     # Only the strongest technical candidates get (rate-limited) fundamentals.
     # 6 FMP calls each against a 250/day free tier means ~20 names is also the

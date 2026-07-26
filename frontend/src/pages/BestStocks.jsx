@@ -84,6 +84,17 @@ function StockRow({ r, first, wide, onClick }) {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 2 }}>
           <span style={{ fontFamily: T.mono, fontSize: 15, fontWeight: 700, color: T.text }}>{r.ticker}</span>
           <RecBadge rec={r.recommendation} size="sm" />
+          {/* Technicals came from the batched market snapshot, not a full price
+              series — so no RSI/MACD/ATR/volatility and a coarser trend read.
+              Labelled rather than presented as an exact reading. */}
+          {r.sub_scores?.approx && (
+            <span
+              title="Ranked from the market snapshot (price, 50/200-day averages, 52-week range) because per-ticker history wasn't available. Coarser than a full-history reading — re-run the scan to upgrade it."
+              style={{ fontFamily: T.mono, fontSize: 8.5, letterSpacing: 0.6, padding: '2px 5px',
+                borderRadius: 3, color: T.muted2, border: `1px solid ${T.muted2}55`, cursor: 'help' }}>
+              APPROX
+            </span>
+          )}
         </div>
         <div style={{ fontFamily: T.sans, fontSize: 12.5, color: T.text2, overflow: 'hidden',
           textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name || '—'}</div>

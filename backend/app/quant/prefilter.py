@@ -95,3 +95,50 @@ def prerank(snapshot: dict[str, dict], tickers: list[str], *, keep: int) -> list
     chosen = [t for _, t in scored[:keep]]
     # keep the unrankable tail bounded so a thin snapshot can't undo the prefilter
     return chosen + unrankable[: max(0, keep // 2)]
+
+
+def snapshot_tech(row: dict | None) -> dict | None:
+    """Technicals derived ONLY from the batched snapshot — zero per-ticker requests.
+
+    The Yahoo *quote* endpoint batches (~10 requests for the liquid universe), and
+    it already carries price, 50/200-day averages, the 52-week range and the
+    52-week return. That is enough for a real trend read. What it cannot give is
+    anything needing a price *series* — RSI, MACD, ATR, realised volatility,
+    drawdown — so those stay None rather than being guessed, and `_avg` in
+    scoring renormalises around the components that are present.
+
+    `extra.approx` marks the row so a caller can label it and prefer an exact
+    row whenever one exists. Returns None when the snapshot has no usable price.
+    """
+    if not row or row.get("price") is None:
+        return None
+    price = row["price"]
+    sma50, sma200 = row.get("sma_50"), row.get("sma_200")
+    hi, lo = row.get("high_52w"), row.get("low_52w")
+    return {
+        "last_price": price,
+        # series-only indicators: unknowable from a quote, so left null
+        "rsi": None, "macd": None, "macd_signal": None, "macd_hist": None,
+        "sma_20": None, "ema_12": None, "ema_26": None,
+        "bb_upper": None, "bb_mid": None, "bb_lower": None,
+        "atr": None, "volatility": None, "drawdown": None,
+        "sma_50": sma50,
+        "sma_200": sma200,
+        # the same 0-100 proxy the prefilter ranks on — structurally the majority
+        # of the real trend_score's weight (price vs SMA50/200, golden cross,
+        # position in the 52w range, 12m momentum)
+        "trend_score": prerank_score(row),
+        "momentum": row.get("return_52w"),
+        "extra": {
+            "avg_dollar_volume": row.get("avg_dollar_volume"),
+            "high_52w": hi,
+            "low_52w": lo,
+            "pct_from_52w_high": (price / hi - 1.0) if (hi and price) else None,
+            "return_12m": row.get("return_52w"),
+            "return_1m": None, "return_3m": None, "return_6m": None,
+            "above_sma50": (price > sma50) if sma50 else None,
+            "above_sma200": (price > sma200) if sma200 else None,
+            "bars": 0,
+            "approx": True,          # derived from the snapshot, not a price series
+        },
+    }

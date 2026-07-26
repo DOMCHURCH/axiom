@@ -280,8 +280,13 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
     empty_batches = 0
     throttled = False
     batch_size = int(p["price_batch"])
-    # Only memoize bars for a modest candidate set (see _cached_batch).
-    cache_bars = len(tickers) <= settings.scan_cache_max
+    # Always memoize bars. The old gate (universe <= scan_cache_max) turned caching
+    # OFF for the full ~10k degraded path — making the slowest, most throttle-prone
+    # path the only uncached one. It existed because a batch-keyed entry held 50
+    # frames at once; per-ticker keys only ever hold what was actually fetched, and
+    # the deep stage's time budget bounds that to a few hundred (~14 KB each), so
+    # there is nothing left to guard against.
+    cache_bars = True
     for i in range(0, len(tickers), batch_size):
         if i and time.time() >= deep_deadline:
             log.info("deep stage budget spent",
@@ -344,13 +349,54 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
                  f"Deep-analysed {done} of ~{reachable} · {len(survivors)} pass liquidity"
                  f" · {pace:.0f}/s")
 
-    survivors.sort(key=lambda x: (x["tech"].get("trend_score") or 0,
+    # ---- Stage 4b: fill the tail from the snapshot -------------------------
+    # The deep stage is time-budgeted and can be throttled, so it routinely does
+    # not reach every candidate. Returning only what it reached is what makes a
+    # working scan look broken: a cold run at 4 threads covers roughly a third of
+    # 400 names inside a 14s budget, and a Yahoo block covers none of them.
+    #
+    # The batched quote endpoint already answered for the whole universe — that is
+    # why the snapshot succeeds where per-ticker history fails — and it carries
+    # price, SMA50/200, the 52-week range and the 52-week return. So rank the
+    # unreached names on that instead of dropping them. These rows are marked
+    # approx=True and never displace an exact row for the same ticker; they are a
+    # coarser read, not a fabricated one.
+    exact = {s["ticker"] for s in survivors}
+    approx_added = 0
+    if snapshot:
+        for t in tickers:
+            if t in exact:
+                continue
+            tech = prefilter.snapshot_tech(snapshot.get(t))
+            if not tech or not _gate(tech, p):
+                continue
+            cid = (cmap.get(t) or (None, None))[0]
+            if cid is None:
+                continue
+            survivors.append({"ticker": t, "company_id": cid, "cik": cmap[t][1],
+                              "tech": tech, "approx": True})
+            approx_added += 1
+        if approx_added:
+            log.info("filled deep-stage tail from snapshot",
+                     extra={"exact": len(exact), "approx": approx_added})
+
+    # Exact rows rank above approximate ones unconditionally, not by score. Two
+    # reasons: prerank_score and the real trend_score are different distributions,
+    # so interleaving them would compare incomparable numbers; and `tickers` is
+    # already pre-ranked best-first, so the names the deep stage did reach are the
+    # strongest candidates anyway. The approximate tail is therefore a safety net
+    # for the throttled/blocked case — where it is the whole list — rather than
+    # something that competes with a real reading.
+    survivors.sort(key=lambda x: (not x.get("approx"),
+                                  x["tech"].get("trend_score") or 0,
                                   x["tech"].get("momentum") or -1), reverse=True)
     jobs.update_scan_run(scan_run_id, counts_merge={
         "priced": priced, "survivors": len(survivors), "deep": deep_done,
+        "exact": len(exact), "approx": approx_added,
         **({"throttled": True} if throttled else {})})
     if throttled:
-        progress(56, f"Provider throttled — ranked the {len(survivors)} names we got")
+        progress(56, f"Provider throttled after {len(exact)} exact reads — "
+                     f"ranked {len(survivors)} names ({approx_added} from the snapshot)")
 
     keep = survivors[: p["technical_keep"]]
 
@@ -430,7 +476,11 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
                 ingest.save_fundamentals(s, cid, fund, source=source)
 
         ranked.append({"ticker": ticker, "company_id": cid, "scores": scores,
-                       "total": scores.get("total_score") or 0})
+                       "total": scores.get("total_score") or 0,
+                       # carried so the row can be LABELLED downstream: a
+                       # snapshot-derived reading must never be presented as an
+                       # exact one just because it scored well
+                       "approx": bool(cand.get("approx"))})
 
 
     jobs.update_scan_run(scan_run_id, counts_merge={"enriched": len(ranked)})
@@ -477,9 +527,16 @@ def _write_scan_results(session, scan_run_id: int, ranked: list[dict]) -> None:
         payload = {
             "scan_run_id": scan_run_id, "company_id": r["company_id"], "rank": rank,
             "total_score": sc.get("total_score"), "recommendation": sc.get("recommendation"),
-            "sub_scores": {k: sc.get(k) for k in (
-                "technical_score", "fundamental_score", "growth_score",
-                "value_score", "quality_score", "risk_score")},
+            "sub_scores": {
+                **{k: sc.get(k) for k in (
+                    "technical_score", "fundamental_score", "growth_score",
+                    "value_score", "quality_score", "risk_score")},
+                # Rides in the existing JSON column so no migration is needed.
+                # True = technicals came from the batched snapshot, not a price
+                # series, so RSI/MACD/ATR/volatility are absent and the technical
+                # score is a coarser read. The UI labels these.
+                **({"approx": True} if r.get("approx") else {}),
+            },
         }
         stmt = pg_insert(ScanResult).values(payload)
         stmt = stmt.on_conflict_do_update(
