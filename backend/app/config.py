@@ -104,9 +104,10 @@ class Settings(BaseSettings):
     universe_min_price: float = 3.0
     universe_min_avg_dollar_volume: float = 1_000_000.0
     universe_min_market_cap: float = 100_000_000.0
-    # "full" scans the whole SEC universe (~10k listings, ~6k with usable prices);
-    # "liquid" scans the curated ~1.5k shortlist and finishes far faster.
-    scan_universe: str = Field(default="full", alias="SCAN_UNIVERSE")
+    # DEFAULT = the curated ~1.5k liquid shortlist: fast, cacheable, and every
+    # name is actually tradable. The UI's second button passes universe="full" to
+    # sweep the whole ~10k SEC universe when you want discovery instead of speed.
+    scan_universe: str = Field(default="liquid", alias="SCAN_UNIVERSE")
     # Tickers per streaming chunk. Kept small on purpose: the deep stage's time
     # budget and the progress bar are both only re-evaluated between chunks, so a
     # large chunk makes the scan overshoot its budget and look frozen meanwhile.
@@ -119,13 +120,15 @@ class Settings(BaseSettings):
     # CEILING — the deep stage actually runs until scan_deep_seconds is spent, so
     # a fast network analyses more names and a slow one still finishes on time.
     # 0 disables the prefilter and scans every name (much slower).
-    scan_prefilter_keep: int = Field(default=2500, alias="SCAN_PREFILTER_KEEP")
+    # Sized so the prefilter engages for BOTH modes (liquid ~1.5k and full ~10k)
+    # and the surviving set still fits under scan_cache_max, so a re-scan is warm.
+    scan_prefilter_keep: int = Field(default=900, alias="SCAN_PREFILTER_KEEP")
     # Wall-clock budget for the per-ticker history + technicals stage.
     scan_deep_seconds: int = Field(default=14, alias="SCAN_DEEP_SECONDS")
     # Daily bars are memoized for 4h so a RE-scan costs zero Yahoo requests, but
     # only when the candidate set is at most this many names — caching thousands
     # of DataFrames would hold hundreds of MB.
-    scan_cache_max: int = Field(default=900, alias="SCAN_CACHE_MAX")
+    scan_cache_max: int = Field(default=1000, alias="SCAN_CACHE_MAX")
     # Only the strongest technical candidates get (rate-limited) fundamentals.
     # 6 FMP calls each against a 250/day free tier means ~20 names is also the
     # most we can afford per scan without burning the daily budget in one run.

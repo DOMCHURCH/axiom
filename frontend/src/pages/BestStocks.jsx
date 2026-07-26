@@ -152,6 +152,7 @@ export default function BestStocks() {
   const [error, setError] = useState('')
   const [loaded, setLoaded] = useState(false)
   const [apiError, setApiError] = useState('')
+  const [mode, setMode] = useState('fast')
   const [wide, setWide] = useState(true)
 
   useEffect(() => {
@@ -178,11 +179,15 @@ export default function BestStocks() {
     })
   }, [])
 
-  async function findBestStocks() {
+  // deep=false → curated liquid names: fast, cacheable, instant on a re-scan.
+  // deep=true  → the whole ~10k SEC universe for genuine discovery.
+  async function findBestStocks(deep = false) {
     if (scanning) return
-    setScanning(true); setError(''); setProgress({ pct: 2, stage: 'Starting scan…' })
+    setScanning(true); setError(''); setMode(deep ? 'deep' : 'fast')
+    setProgress({ pct: 2, stage: deep ? 'Starting whole-market scan…' : 'Starting scan…' })
     try {
-      const { job_id, scan_run_id } = await runScan({})
+      const { job_id, scan_run_id } = await runScan(
+        deep ? { universe: 'full', deep_seconds: 25 } : {})
       await pollJob(job_id, {
         onProgress: (j) => setProgress({ pct: j.progress ?? 0, stage: j.stage || j.status, elapsed: j.elapsed }),
       })
@@ -268,12 +273,23 @@ export default function BestStocks() {
               <button title="Reload latest" onClick={refreshLatest} style={iconBtn}
                 onMouseEnter={(e) => { e.currentTarget.style.background = T.glassHov; e.currentTarget.style.borderColor = T.border2 }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = T.glass2; e.currentTarget.style.borderColor = T.border }}>↻</button>
-              <button onClick={findBestStocks} disabled={scanning}
+              <button onClick={() => findBestStocks(false)} disabled={scanning}
+                title="Curated liquid names — fast, and near-instant on a re-scan"
                 style={{ background: scanning ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg,#f5a524,#ffc25a)',
                   color: scanning ? T.muted2 : '#1a1206', border: 'none', borderRadius: 14, padding: '13px 28px',
                   fontFamily: T.mono, fontSize: 14, fontWeight: 700, letterSpacing: 0.4,
                   cursor: scanning ? 'wait' : 'pointer', boxShadow: scanning ? 'none' : `0 8px 30px ${T.accentGlow}` }}>
-                {scanning ? 'Scanning market…' : (n ? '⚡ Re-run scan' : '⚡ Find Best Stocks')}
+                {scanning && mode === 'fast' ? 'Scanning…' : (n ? '⚡ Re-run scan' : '⚡ Find Best Stocks')}
+              </button>
+              <button onClick={() => findBestStocks(true)} disabled={scanning}
+                title="Sweep the entire ~10,000-name SEC universe — slower, finds names outside the shortlist"
+                style={{ background: 'transparent', color: scanning ? T.muted2 : T.text2,
+                  border: `1px solid ${T.border2}`, borderRadius: 14, padding: '13px 20px',
+                  fontFamily: T.mono, fontSize: 12, fontWeight: 600, letterSpacing: 0.3,
+                  cursor: scanning ? 'wait' : 'pointer' }}
+                onMouseEnter={(e) => { if (!scanning) { e.currentTarget.style.borderColor = T.accentBd; e.currentTarget.style.color = T.text } }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border2; e.currentTarget.style.color = scanning ? T.muted2 : T.text2 }}>
+                {scanning && mode === 'deep' ? 'Sweeping market…' : '🌐 Deep scan'}
               </button>
             </div>
           </div>

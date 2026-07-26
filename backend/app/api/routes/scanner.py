@@ -20,6 +20,9 @@ class ScanBody(BaseModel):
     top_n: int | None = None
     technical_keep: int | None = None
     enrich_seconds: int | None = None
+    deep_seconds: int | None = None        # budget for history + technicals
+    prefilter_keep: int | None = None
+    price_batch: int | None = None
     min_price: float | None = None
     min_dollar_vol: float | None = None
     enrich: bool | None = None
