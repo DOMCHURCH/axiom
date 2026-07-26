@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "functions": {
+    "api/ai.js": { "maxDuration": 60 },
+    "api/edgar.js": { "maxDuration": 30 }
+  }
+}
