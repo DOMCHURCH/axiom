@@ -100,6 +100,11 @@ class Settings(BaseSettings):
     universe_min_price: float = 3.0
     universe_min_avg_dollar_volume: float = 1_000_000.0
     universe_min_market_cap: float = 100_000_000.0
+    # "full" scans the whole SEC universe (~10k listings, ~6k with usable prices);
+    # "liquid" scans the curated ~1.5k shortlist and finishes far faster.
+    scan_universe: str = Field(default="full", alias="SCAN_UNIVERSE")
+    # Tickers per Yahoo bulk request while streaming the universe.
+    scan_price_batch: int = Field(default=200, alias="SCAN_PRICE_BATCH")
     # Only the strongest technical candidates get (rate-limited) fundamentals —
     # we surface a top-10, so enriching 40 is ample and keeps the stage short.
     scan_technical_keep: int = 40

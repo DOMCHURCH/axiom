@@ -32,9 +32,14 @@ export default function Shell({ children, footerNote }) {
             </div>
           </header>
 
-          <main style={{ flex: 1, width: '100%', maxWidth: 1240, margin: '0 auto',
-            padding: 'clamp(16px, 2vw, 28px)', overflowY: 'auto', minHeight: 0 }}>
-            {children}
+          {/* The only scroll container. No blur lives inside it, so scrolling is a
+              cheap composite instead of a per-frame blur repaint. */}
+          <main className="ax-scroll" style={{ flex: 1, width: '100%', minHeight: 0,
+            overflowY: 'auto', overflowX: 'hidden', scrollBehavior: 'smooth',
+            overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
+            <div style={{ width: '100%', maxWidth: 1240, margin: '0 auto', padding: 'clamp(16px, 2vw, 28px)' }}>
+              {children}
+            </div>
           </main>
 
           <footer className="ax-footer" style={{ minHeight: 34, display: 'flex', alignItems: 'center',

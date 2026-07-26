@@ -46,19 +46,30 @@ export const getReport = (t) => req(`/companies/${t}/report`)
 export const makeReport = (t) => req(`/companies/${t}/report`, { method: 'POST' })
 
 // ── Job polling helper ──
-// Polls a job until it succeeds/fails. Calls onProgress({progress, stage}) on updates.
-export async function pollJob(jobId, { onProgress, interval = 1500, timeout = 600_000 } = {}) {
+// Polls a job until it succeeds/fails. Calls onProgress({...job, elapsed}) on
+// updates. A full-market scan legitimately runs for several minutes, so the
+// timeout is generous and transient poll failures (a cold DB, a redeploy, a
+// dropped request) are tolerated instead of aborting a scan that's still running.
+export async function pollJob(jobId, {
+  onProgress, interval = 2000, timeout = 2_700_000, maxConsecutiveErrors = 8,
+} = {}) {
   const start = Date.now()
-  // small sleep that can't be blocked by the harness
   const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+  let errors = 0
   while (Date.now() - start < timeout) {
-    const job = await getJob(jobId)
-    onProgress?.(job)
-    if (job.status === 'succeeded') return job
-    if (job.status === 'failed') throw new Error(job.error || 'Scan failed')
+    try {
+      const job = await getJob(jobId)
+      errors = 0
+      onProgress?.({ ...job, elapsed: Math.round((Date.now() - start) / 1000) })
+      if (job.status === 'succeeded') return job
+      if (job.status === 'failed') throw new Error(job.error || 'Scan failed')
+    } catch (err) {
+      if (err.message === 'Scan failed' || err.status === 404) throw err
+      if (++errors >= maxConsecutiveErrors) throw err
+    }
     await wait(interval)
   }
-  throw new Error('Scan timed out')
+  throw new Error('Scan timed out — the backend may still be running; hit refresh to load results.')
 }
 
 // ── Formatting helpers ──

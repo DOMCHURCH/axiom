@@ -68,8 +68,11 @@ def _fmp_bundle(ticker: str, deadline: float | None = None) -> dict:
 def _resolve_params(params: dict | None) -> dict:
     params = params or {}
     return {
-        "universe": params.get("universe", "liquid"),   # "liquid" (fast default) | "full" (deep SEC scan)
+        # "full" = the entire SEC universe (~10k listings, ~6k with usable prices);
+        # "liquid" = the curated ~1.5k shortlist for a much faster scan.
+        "universe": params.get("universe", settings.scan_universe),
         "universe_limit": params.get("universe_limit"),
+        "price_batch": params.get("price_batch", settings.scan_price_batch),
         "min_price": params.get("min_price", settings.universe_min_price),
         "min_dollar_vol": params.get("min_dollar_vol", settings.universe_min_avg_dollar_volume),
         "min_market_cap": params.get("min_market_cap", settings.universe_min_market_cap),
@@ -118,28 +121,59 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
     tickers = [t for t in tickers if t in cmap]
     jobs.update_scan_run(scan_run_id, universe_size=len(tickers), counts_merge={"universe": len(tickers)})
 
-    # ---- Stage 2: bulk prices (yahoo, unlimited) --------------------------
+    # ---- Stage 2+3+4: STREAMED prices -> technicals -> liquidity gate ------
+    # Streaming is what makes a full ~10k-name scan viable: prices arrive one
+    # batch at a time, each batch is reduced to small technical dicts, and the
+    # DataFrames are dropped immediately. Holding every frame at once (6k x ~250
+    # rows) costs hundreds of MB and is what made big scans crawl or die.
+    total_t = max(1, len(tickers))
     progress(12, f"Fetching prices for {len(tickers)} tickers")
-    frames = yahoo.fetch_prices_bulk(tickers, period=p["price_period"])
-
-    # ---- Stage 3+4: gate + technical ranking ------------------------------
-    progress(45, "Computing technicals + liquidity gate")
     survivors: list[dict] = []
-    for t in tickers:
-        df = frames.get(t)
-        tech = compute_technicals(df)
-        if not tech or not _gate(tech, p):
-            continue
-        cid = (cmap.get(t) or (None, None))[0]
-        if cid is None:
-            continue
-        survivors.append({"ticker": t, "company_id": cid, "cik": cmap[t][1],
-                          "tech": tech, "df": df})
+    priced = 0
+    batch_size = int(p["price_batch"])
+    for i in range(0, len(tickers), batch_size):
+        batch = tickers[i:i + batch_size]
+        try:
+            frames = yahoo.download_batch(batch, period=p["price_period"])
+        except Exception as exc:  # a bad batch must not kill the scan
+            log.warning("price batch failed", extra={"start": i, "err": str(exc)})
+            frames = {}
+        for t in batch:
+            df = frames.get(t)
+            if df is None or df.empty:
+                continue
+            priced += 1
+            tech = compute_technicals(df)
+            if not tech or not _gate(tech, p):
+                continue
+            cid = (cmap.get(t) or (None, None))[0]
+            if cid is None:
+                continue
+            # note: no DataFrame retained — prices for the finalists are re-fetched
+            survivors.append({"ticker": t, "company_id": cid, "cik": cmap[t][1], "tech": tech})
+        frames.clear()
+        done = min(i + batch_size, len(tickers))
+        progress(12 + int(43 * done / total_t),
+                 f"Priced {done}/{len(tickers)} · {len(survivors)} pass liquidity")
+
     survivors.sort(key=lambda x: (x["tech"].get("trend_score") or 0,
                                   x["tech"].get("momentum") or -1), reverse=True)
-    jobs.update_scan_run(scan_run_id, counts_merge={"priced": len(frames), "survivors": len(survivors)})
+    jobs.update_scan_run(scan_run_id, counts_merge={"priced": priced, "survivors": len(survivors)})
 
     keep = survivors[: p["technical_keep"]]
+
+    # Re-fetch price history for the finalists only, so their candles can be
+    # persisted for the detail-page chart (a single small batched call).
+    if keep:
+        progress(56, f"Loading price history for {len(keep)} finalists")
+        try:
+            keep_frames = yahoo.fetch_prices_bulk([c["ticker"] for c in keep],
+                                                  period=p["price_period"])
+        except Exception as exc:  # noqa: BLE001
+            log.warning("finalist price refetch failed", extra={"err": str(exc)})
+            keep_frames = {}
+        for cand in keep:
+            cand["df"] = keep_frames.get(cand["ticker"])
 
     # ---- Stage 5: staged fundamental enrichment (budget- + time-bounded) ---
     progress(60, f"Enriching top {len(keep)} candidates (fundamentals)")
@@ -190,7 +224,9 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
         scores = compute_scores(cand["tech"], fund, weights=p["weights"])
 
         with session_scope() as s:
-            ingest.upsert_prices(s, cid, cand["df"])
+            df = cand.get("df")            # None if the finalist re-fetch missed it
+            if df is not None and not df.empty:
+                ingest.upsert_prices(s, cid, df)
             ingest.save_technicals(s, cid, cand["tech"], as_of=as_of)
             if fund:
                 ingest.save_fundamentals(s, cid, fund, source=source)

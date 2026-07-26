@@ -172,7 +172,9 @@ export default function BestStocks() {
     setScanning(true); setError(''); setProgress({ pct: 2, stage: 'Starting scan…' })
     try {
       const { job_id, scan_run_id } = await runScan({})
-      await pollJob(job_id, { onProgress: (j) => setProgress({ pct: j.progress ?? 0, stage: j.stage || j.status }) })
+      await pollJob(job_id, {
+        onProgress: (j) => setProgress({ pct: j.progress ?? 0, stage: j.stage || j.status, elapsed: j.elapsed }),
+      })
       const res = await scanResults(scan_run_id, { limit: TOP_N })
       setResults(res.results || []); setAsOf(new Date())
       marketOverview().then(setOverview).catch(() => {})
@@ -261,7 +263,14 @@ export default function BestStocks() {
                 <div style={{ height: '100%', width: `${progress.pct}%`, background: `linear-gradient(90deg,${T.accent},${T.accentHi})`,
                   boxShadow: `0 0 12px ${T.accentGlow}`, borderRadius: 999, transition: 'width .5s ease' }} />
               </div>
-              <div style={{ fontFamily: T.mono, fontSize: 11, color: T.accent }}>{progress.stage}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent }}>{progress.stage}</span>
+                {progress.elapsed != null && (
+                  <span className="tnum" style={{ fontFamily: T.mono, fontSize: 11, color: T.muted2 }}>
+                    {Math.floor(progress.elapsed / 60)}m {String(progress.elapsed % 60).padStart(2, '0')}s
+                  </span>
+                )}
+              </div>
             </div>
           )}
           {error && (
