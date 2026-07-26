@@ -19,6 +19,7 @@ class ScanBody(BaseModel):
     universe_limit: int | None = None
     top_n: int | None = None
     technical_keep: int | None = None
+    enrich_seconds: int | None = None
     min_price: float | None = None
     min_dollar_vol: float | None = None
     enrich: bool | None = None

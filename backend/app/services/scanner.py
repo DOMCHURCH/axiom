@@ -12,6 +12,7 @@ Company Facts or cached data). Nothing refreshes all fundamentals in one day.
 
 from __future__ import annotations
 
+import time
 from datetime import date
 
 from sqlalchemy import select
@@ -65,6 +66,9 @@ def _resolve_params(params: dict | None) -> dict:
         "technical_keep": params.get("technical_keep", settings.scan_technical_keep),
         "top_n": params.get("top_n", settings.scan_top_n),
         "enrich": params.get("enrich", True),
+        # Hard wall-clock cap on the (rate-limited) FMP enrichment stage so the
+        # scan always finishes; names not enriched in time are scored technical-only.
+        "enrich_seconds": params.get("enrich_seconds", settings.scan_enrich_seconds),
         "sec_fallback": params.get("sec_fallback", False),
         "weights": params.get("weights"),
         "price_period": params.get("price_period", "1y"),
@@ -127,9 +131,14 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
 
     keep = survivors[: p["technical_keep"]]
 
-    # ---- Stage 5: staged fundamental enrichment (budget-aware) ------------
+    # ---- Stage 5: staged fundamental enrichment (budget- + time-bounded) ---
     progress(60, f"Enriching top {len(keep)} candidates (fundamentals)")
-    fmp_exhausted = False
+    # FMP is off when no key is set (scan stays fast, technical-only), and the
+    # whole stage is capped by a wall-clock deadline so a slow/rate-limited FMP
+    # can never stall the scan — remaining names are scored technical-only.
+    fmp_enabled = bool(p["enrich"] and settings.fmp_api_key)
+    fmp_exhausted = not fmp_enabled
+    enrich_deadline = time.time() + max(5, int(p["enrich_seconds"]))
     ranked: list[dict] = []
     total = max(1, len(keep))
     for i, cand in enumerate(keep):
@@ -137,7 +146,12 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
         fund: dict | None = None
         source = "none"
 
-        if p["enrich"] and not fmp_exhausted:
+        if not fmp_exhausted and time.time() >= enrich_deadline:
+            fmp_exhausted = True
+            log.info("FMP enrichment time budget reached; remaining names technical-only",
+                     extra={"at_index": i, "seconds": p["enrich_seconds"]})
+
+        if fmp_enabled and not fmp_exhausted:
             try:
                 bundle = _fmp_bundle(ticker)
                 if bundle and any(bundle.values()):
@@ -174,8 +188,9 @@ def run_scan(scan_run_id: int, job_id: str, params: dict | None = None) -> dict:
         ranked.append({"ticker": ticker, "company_id": cid, "scores": scores,
                        "total": scores.get("total_score") or 0})
 
-        if i % 10 == 0:
-            progress(60 + int(25 * i / total), f"Enriched {i}/{len(keep)} ({source})")
+        if i % 3 == 0 or i == total - 1:
+            mode = "technical-only" if fmp_exhausted else "fundamentals"
+            progress(60 + int(25 * (i + 1) / total), f"Scoring {i + 1}/{len(keep)} · {mode}")
 
     jobs.update_scan_run(scan_run_id, counts_merge={"enriched": len(ranked)})
 

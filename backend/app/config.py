@@ -100,8 +100,11 @@ class Settings(BaseSettings):
     universe_min_price: float = 3.0
     universe_min_avg_dollar_volume: float = 1_000_000.0
     universe_min_market_cap: float = 100_000_000.0
-    scan_technical_keep: int = 60
-    scan_top_n: int = 50
+    scan_technical_keep: int = 120
+    scan_top_n: int = 100
+    # Wall-clock cap (seconds) for the rate-limited FMP enrichment stage; names
+    # not enriched in time are scored technical-only so the scan always finishes.
+    scan_enrich_seconds: int = 75
 
     # -------------------------------------------------------------- helpers
     @staticmethod
