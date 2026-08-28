@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { UserButton, SignInButton, useUser, useAuth } from '@clerk/clerk-react'
+import { UserButton, SignInButton, useUser, useAuth } from './lib/clerk.jsx'
 import ResearchReport from './components/ResearchReport.jsx'
 import { saveToHistory, loadHistory } from './lib/storage.js'
 import { generateResearch } from './lib/ai.js'
