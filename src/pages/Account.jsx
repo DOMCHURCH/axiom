@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useUser, useAuth, UserButton, SignInButton } from '@clerk/clerk-react'
+import { useUser, useAuth, UserButton, SignInButton } from '../lib/clerk.jsx'
 import { palette as T } from '../lib/tokens.js'
 
 const REC_COLOR = { BUY: '#10b981', HOLD: '#f59e0b', SELL: '#ef4444' }

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ResearchReport from '../components/ResearchReport.jsx'
-import { SignInButton, SignUpButton, UserButton, useUser } from '@clerk/clerk-react'
+import { SignInButton, SignUpButton, UserButton, useUser } from '../lib/clerk.jsx'
 import { brand as T, ease as EASE } from '../lib/tokens.js'
 
 const clerkEnabled = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
